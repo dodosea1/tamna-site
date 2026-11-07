@@ -2,6 +2,7 @@
 
 사용: python tools/lint_public.py [--root .] [--terms ~/.claude/tamna-private-terms.txt]
 종료 코드: 0 깨끗, 1 발견, 2 금지어 목록 파일 없음(실패 닫힘).
+검사 범위: git이 아는 파일 전부(추적 중 + 추적 안 된 파일, 무시 파일 제외) 가운데 글자 파일. media/ 아래는 파일 이름만.
 맞은 문자열 자체는 출력하지 않는다(경로:줄: 규칙 이름만).
 """
 
@@ -9,12 +10,13 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 DEFAULT_TERMS = Path.home() / ".claude" / "tamna-private-terms.txt"
-SCAN_DIRS = ("content", "data", "templates", "static")
-SCAN_SUFFIXES = {".md", ".json", ".html", ".css", ".txt", ".yml", ".yaml", ".js"}
+TEXT_SUFFIXES = {".md", ".json", ".html", ".css", ".txt", ".yml", ".yaml", ".js", ".py", ".toml", ".cfg", ".ini", ".svg", ".xml"}
+SKIP_DIRS = {"_site", "_preview", "__pycache__"}  # 점으로 시작하는 폴더는 .github 빼고 모두 건너뛴다
 
 PATTERNS = {
     "windows-path": re.compile(r"[A-Za-z]:\\"),
@@ -46,32 +48,51 @@ def scan_text(text: str, terms: list[str]) -> list[str]:
     return hits
 
 
-def _files(root: Path):
-    for name in SCAN_DIRS:
-        folder = root / name
-        if folder.exists():
-            for path in sorted(folder.rglob("*")):
-                if path.is_file() and path.suffix.lower() in SCAN_SUFFIXES:
-                    yield path
-    for path in sorted(root.glob("*.md")):
-        yield path
+def _git_files(root: Path) -> list[Path] | None:
+    """git이 아는 파일(추적 + 미추적, 무시 제외). git 저장소가 아니면 None."""
+    if not (root / ".git").exists():
+        return None
+    proc = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        return None
+    names = [n for n in proc.stdout.decode("utf-8", errors="replace").split("\0") if n]
+    return [root / n for n in names]
 
 
-def scan_tree(root: Path, terms: list[str]) -> list[tuple[str, int, str]]:
+def _walk_files(root: Path) -> list[Path]:
+    out: list[Path] = []
+    for path in sorted(root.rglob("*")):
+        parts = path.relative_to(root).parts
+        if any(part in SKIP_DIRS or (part.startswith(".") and part != ".github") for part in parts[:-1]):
+            continue
+        if path.is_file():
+            out.append(path)
+    return out
+
+
+def scan_tree(root: Path, terms: list[str], exclude: tuple[Path, ...] = ()) -> list[tuple[str, int, str]]:
     root = Path(root)
+    excluded = {Path(p).resolve() for p in exclude}
+    files = _git_files(root)
+    if files is None:
+        files = _walk_files(root)
     findings: list[tuple[str, int, str]] = []
-    for path in _files(root):
+    for path in files:
+        if not path.is_file() or path.resolve() in excluded:
+            continue
         rel = path.relative_to(root).as_posix()
+        if rel.startswith("media/"):
+            for rule in scan_text(path.name, terms):
+                findings.append((rel, 0, rule))
+            continue
+        if path.suffix.lower() not in TEXT_SUFFIXES:
+            continue
         for lineno, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
             for rule in scan_text(line, terms):
                 findings.append((rel, lineno, rule))
-    media = root / "media"
-    if media.exists():
-        for path in sorted(media.rglob("*")):
-            if path.is_file():
-                rel = path.relative_to(root).as_posix()
-                for rule in scan_text(path.name, terms):
-                    findings.append((rel, 0, rule))
     return findings
 
 
@@ -87,7 +108,7 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError:
         print(f"금지어 목록이 없습니다: {args.terms} (검사를 통과시키지 않습니다)")
         return 2
-    findings = scan_tree(Path(args.root), terms)
+    findings = scan_tree(Path(args.root), terms, exclude=(Path(args.terms),))
     for rel, lineno, rule in findings:
         print(f"{rel}:{lineno}: {rule}")
     if findings:

@@ -64,9 +64,18 @@ def _monthly_link(base: str, m: Monthly) -> str:
     return f'<li><a href="{base}/monthly/{m.month}/">{escape(m.month)} · {escape(m.title)}</a></li>'
 
 
+def _guard_out(root: Path, out: Path) -> None:
+    root_r, out_r = root.resolve(), out.resolve()
+    if out_r == root_r or root_r.is_relative_to(out_r):
+        raise ValueError(f"출력 폴더가 저장소 자체이거나 그 상위 폴더입니다: {out_r}")
+    if out_r.exists() and any(out_r.iterdir()) and not (out_r / ".nojekyll").exists():
+        raise ValueError(f"출력 폴더가 비어 있지 않고 생성기 출력(.nojekyll)도 아닙니다: {out_r}")
+
+
 def build_site(root: Path, out: Path, base: str | None = None) -> None:
     root = Path(root)
     out = Path(out)
+    _guard_out(root, out)
     site = _load_json(root / "data" / "site.json")
     if base is None:
         base = site.get("base_path", "")

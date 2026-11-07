@@ -29,6 +29,30 @@ class ContentTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_logs(Path(d))
 
+    def test_load_logs_rejects_h3_heading_and_empty_next_items(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "2026-01-01.md").write_text("---\ndate: 2026-01-01\n---\n### 한 일\n- x\n## 막힌 것\n- y\n## 다음에 손댈 것 (약속 아님)\n- z\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_logs(Path(d))
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "2026-01-01.md").write_text("---\ndate: 2026-01-01\n---\n## 한 일\n- x\n## 막힌 것\n- y\n## 다음에 손댈 것 (약속 아님)\n1. 번호 목록\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_logs(Path(d))
+
+    def test_load_logs_rejects_date_filename_mismatch(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "2026-01-01.md").write_text("---\ndate: 2026-01-40\n---\n## 한 일\n- x\n## 막힌 것\n- y\n## 다음에 손댈 것 (약속 아님)\n- z\n", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                load_logs(Path(d))
+
+    def test_loaders_skip_drafts(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "2026-01-01.md").write_text("---\ndate: 2026-01-01\ndraft: true\n---\n## 한 일\n- x\n## 막힌 것\n- y\n## 다음에 손댈 것 (약속 아님)\n- z\n", encoding="utf-8")
+            self.assertEqual(load_logs(Path(d)), [])
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "2026-11.md").write_text("---\ndate: 2026-11-01\ntitle: 초안\ndraft: true\n---\n## 이달에 한 일\n- x\n", encoding="utf-8")
+            self.assertEqual(load_monthly(Path(d)), [])
+
     def test_load_pages_sorted_by_order(self):
         pages = load_pages(FX / "pages")
         self.assertEqual([p.slug for p in pages], ["about", "game", "feedback"])

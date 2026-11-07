@@ -53,6 +53,18 @@ class BuildTest(unittest.TestCase):
     def test_korean_roundtrip_utf8(self):
         self.assertIn("탐라(가제)", (self.out / "index.html").read_bytes().decode("utf-8"))
 
+    def test_build_refuses_out_that_is_root_or_contains_root(self):
+        with self.assertRaises(ValueError):
+            build_site(FX, FX, base="")
+        with self.assertRaises(ValueError):
+            build_site(FX, FX.parent, base="")
+
+    def test_build_refuses_existing_non_output_folder(self):
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, "keep.txt").write_text("x", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                build_site(FX, Path(d), base="")
+
     def test_feed_lists_logs_and_monthly(self):
         xml = (self.out / "feed.xml").read_text(encoding="utf-8")
         self.assertIn("https://example.github.io/tamna-site/log/2026-11-07/", xml)
