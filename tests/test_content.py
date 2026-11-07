@@ -31,7 +31,7 @@ class ContentTest(unittest.TestCase):
 
     def test_load_pages_sorted_by_order(self):
         pages = load_pages(FX / "pages")
-        self.assertEqual([p.slug for p in pages], ["about", "game"])
+        self.assertEqual([p.slug for p in pages], ["about", "game", "feedback"])
         self.assertEqual(pages[0].title, "만드는 사람과 AI")
 
     def test_load_monthly_newest_first(self):

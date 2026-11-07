@@ -1,0 +1,27 @@
+<section class="hero">
+{{hero}}
+<p class="tagline">{{tagline}}</p>
+<p class="inspiration">{{inspiration}}</p>
+<p class="summary-en">{{summary_en}}</p>
+<p class="cta"><a class="button" href="{{base}}/feed.xml">RSS로 소식 받기</a> {{threads}}</p>
+</section>
+
+<section class="now">
+<h2>지금 하는 일 <span class="muted">({{now_date}} 기록 기준, 약속 아님)</span></h2>
+<ul>{{now_items}}</ul>
+</section>
+
+<section class="ai">
+<h2>누가 무엇을 만드나</h2>
+<p>{{author}}: 비전공자 한 사람이 AI 도구와 함께 만듭니다. 영역별로 무엇을 AI가 하고 무엇을 사람이 하는지 적어 둡니다.</p>
+{{ai_table}}
+<p><a href="{{base}}/about/">자세히 보기 →</a></p>
+</section>
+
+<section class="latest">
+<h2>최근 작업 기록</h2>
+<ul>{{latest_logs}}</ul>
+<p><a href="{{base}}/log/">전체 기록 →</a></p>
+<h2>이달의 정리</h2>
+<ul>{{latest_monthly}}</ul>
+</section>
