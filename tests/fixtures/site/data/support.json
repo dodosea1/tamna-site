@@ -1,0 +1,12 @@
+{
+  "cap_krw": 10000000,
+  "notice": [
+    "후원은 자발적이며 게임 내 보상은 없습니다.",
+    "결제 뒤 환불은 되지 않습니다."
+  ],
+  "ledger": [
+    {"month": "2026-11", "received_krw": 10000, "spent_krw": 0, "use": ""},
+    {"month": "2026-12", "received_krw": 20000, "spent_krw": 15000, "use": "도메인 1년"}
+  ],
+  "thanks": []
+}
