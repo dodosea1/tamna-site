@@ -164,3 +164,10 @@ pre { overflow-x: auto; padding: 12px; background: var(--bg-2); border-radius: 1
 @media (prefers-reduced-motion: reduce) { .site-header { transition: none; } .hero-media img { animation: none; } }
 @media (max-width: 720px) { .hero-media img { object-position: 42% 50%; } }
 @media (max-width: 600px) { .log-list a, .log-groups a { grid-template-columns: 1fr; } .log-list .x, .log-groups .x { grid-column: 1; } }
+
+/* 후원 QR: 흰 바탕을 QR 안에 함께 그려 어두운 화면에서도 읽힌다 */
+.donate { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; margin: 18px 0; }
+.donate-qr { flex: 0 0 auto; width: 200px; line-height: 0; }
+.donate-qr svg { display: block; width: 100%; height: auto; border-radius: 4px; }
+.donate-text { flex: 1 1 240px; min-width: 0; }
+.donate-text p { margin: 0 0 8px; }

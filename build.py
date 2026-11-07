@@ -13,6 +13,7 @@ from datetime import date
 from html import escape
 from pathlib import Path
 
+from tools.sitegen.donate import donate_block, is_direct
 from tools.sitegen.content import LogEntry, Monthly, bullet_items, extract_section, load_logs, load_monthly, load_pages
 from tools.sitegen.feed import FeedItem, build_rss
 from tools.sitegen.render import fill, md_to_html, render_template
@@ -135,11 +136,11 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "email": _email_html(site.get("email_user", ""), site.get("email_domain", "")),
         "tally_feedback": _link_or_prep(site.get("tally_feedback_url", ""), "의견 보내기 폼 열기"),
         "tally_tester": _link_or_prep(site.get("tally_tester_url", ""), "같이 사냥할 명단에 올리기"),
-        "ctee": _link_or_prep(site.get("ctee_url", ""), "크티로 응원하기"),
+        "donate": donate_block(site),
         "threads": _link_or_prep(site.get("threads_url", ""), "스레드에서 보기"),
         "feedback_table": feedback_table(data["feedback"]),
         "roadmap_section": roadmap_section(data["roadmap"]),
-        "support_section": support_section(data["support"]),
+        "support_section": support_section(data["support"], direct=is_direct(site)),
         "ai_table": ai_table(data["ai"]),
         "logo": f'<img class="logo-img" src="{base}/static/art/logo-cream-1600.png" alt="탐라" width="1600" height="912">',
         "brand": f'<img src="{base}/static/art/logo-cream-400.png" alt="탐라" width="400" height="228">',
