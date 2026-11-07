@@ -44,6 +44,19 @@ def _media_html(base: str, path: str, label: str = "") -> str:
     return f"<figure>{tag}{caption}</figure>"
 
 
+def _hero_html(base: str, site: dict) -> str:
+    """첫 화면 그림. 즉시 로드하고, 세로 화면용 그림이 있으면 <picture>로 바꿔 끼운다."""
+    if not site.get("hero_media"):
+        return ""
+    html = _media_html(base, site["hero_media"], site.get("hero_label", "")).replace('loading="lazy"', 'loading="eager" fetchpriority="high"')
+    mobile = site.get("hero_media_mobile")
+    if mobile and "<img " in html:
+        img_start = html.index("<img "); img_end = html.index(">", img_start) + 1
+        source = f'<picture><source media="(max-width: 720px)" srcset="{base}/{mobile}">'
+        html = html[:img_start] + source + html[img_start:img_end] + "</picture>" + html[img_end:]
+    return html
+
+
 def _link_or_prep(url: str, label: str) -> str:
     if url:
         return f'<a class="button" href="{escape(url)}" rel="noopener">{escape(label)}</a>'
@@ -131,7 +144,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
 
     # 첫 화면
     latest = logs[0] if logs else None
-    hero = _media_html(base, site["hero_media"], site.get("hero_label", "")) if site.get("hero_media") else ""
+    hero = _hero_html(base, site)
     index_ctx = {
         **common,
         "hero": hero,

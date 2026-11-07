@@ -73,3 +73,18 @@ class BuildTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HeroMobileTest(unittest.TestCase):
+    def test_hero_uses_mobile_source_when_configured(self):
+        import json, shutil
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "root"; shutil.copytree(FX, root)
+            site = json.loads((root / "data" / "site.json").read_text(encoding="utf-8"))
+            site["hero_media"] = "static/art/key-hero-2400.webp"; site["hero_media_mobile"] = "static/art/key-hero-m-1000.webp"
+            (root / "data" / "site.json").write_text(json.dumps(site, ensure_ascii=False), encoding="utf-8")
+            out = Path(tmp) / "out"; build_site(root, out, base="/tamna-site")
+            html = (out / "index.html").read_text(encoding="utf-8")
+            self.assertIn('<picture><source media="(max-width: 720px)" srcset="/tamna-site/static/art/key-hero-m-1000.webp">', html)
+            self.assertIn('src="/tamna-site/static/art/key-hero-2400.webp"', html)
+            self.assertIn('loading="eager"', html)

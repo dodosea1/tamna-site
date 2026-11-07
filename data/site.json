@@ -6,12 +6,13 @@
   "base_path": "/tamna-site",
   "site_url": "https://example.github.io/tamna-site",
   "hero_media": "static/art/key-hero-2400.webp",
-  "hero_label": "키아트 (컨셉 그림)",
+  "hero_label": "키아트 (민화풍 그림)",
   "email_user": "",
   "email_domain": "",
   "ctee_url": "",
   "tally_feedback_url": "",
   "tally_tester_url": "",
   "threads_url": "",
-  "summary_en": "A party-hunting online RPG set on a mythical Jeju island, built solo by a non-programmer with AI tools. Daily work logs are posted automatically and are not promises; a monthly post answers feedback."
+  "summary_en": "A party-hunting online RPG set on a mythical Jeju island, built solo by a non-programmer with AI tools. Daily work logs are posted automatically and are not promises; a monthly post answers feedback.",
+  "hero_media_mobile": "static/art/key-hero-m-1000.webp"
 }
