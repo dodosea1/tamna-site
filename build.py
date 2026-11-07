@@ -206,6 +206,18 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     feed_items.sort(key=lambda i: i.date, reverse=True)
     _write(out / "feed.xml", build_rss(feed_items, site["title"], site_url, "작업 기록과 이달의 정리"))
 
+    # 사이트맵: 쓴 HTML 페이지를 빠짐없이 싣는다. 기록과 월간 글은 날짜를 함께 적는다.
+    dated = {f"log/{log.date}/": log.date for log in logs}
+    dated.update({f"monthly/{m.month}/": f"{m.month}-01" for m in monthly})
+    locs = []
+    for page_file in sorted(out.rglob("index.html")):
+        rel = page_file.parent.relative_to(out).as_posix()
+        rel = "" if rel == "." else rel + "/"
+        lastmod = f"<lastmod>{dated[rel]}</lastmod>" if rel in dated else ""
+        locs.append(f"<url><loc>{escape(site_url + '/' + rel)}</loc>{lastmod}</url>")
+    sitemap_lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', *locs, "</urlset>", ""]
+    _write(out / "sitemap.xml", chr(10).join(sitemap_lines))
+
     # 정적 파일
     shutil.copytree(static, out / "static")
     media_dir = root / "media"
