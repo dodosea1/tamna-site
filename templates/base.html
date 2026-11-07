@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{title}} · {{site_title}}</title>
+<link rel="stylesheet" href="{{base}}/static/style.css">
+<link rel="alternate" type="application/rss+xml" title="{{site_title}} 작업 기록" href="{{base}}/feed.xml">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="{{base}}/">{{site_title}}</a>
+  <nav>
+    <a href="{{base}}/log/">작업 기록</a>
+    <a href="{{base}}/monthly/">이달의 정리</a>
+    <a href="{{base}}/about/">만드는 사람과 AI</a>
+    <a href="{{base}}/game/">게임</a>
+    <a href="{{base}}/roadmap/">로드맵</a>
+    <a href="{{base}}/feedback/">의견 보내기</a>
+    <a href="{{base}}/help-wanted/">막힌 문제</a>
+    <a href="{{base}}/together/">함께하기</a>
+    <a href="{{base}}/support/">후원</a>
+  </nav>
+</header>
+<main>
+{{content}}
+</main>
+<footer>
+  <p>{{site_title}} · {{year}} · <a href="{{base}}/privacy/">개인정보 처리방침</a> · <a href="{{base}}/feed.xml">RSS</a></p>
+</footer>
+</body>
+</html>
