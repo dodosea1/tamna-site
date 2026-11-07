@@ -53,12 +53,14 @@ def roadmap_section(data: dict) -> str:
     return "\n".join(parts)
 
 
-def support_section(data: dict, direct: bool = False) -> str:
+def support_section(data: dict, direct: bool = False, ctee: bool | None = None) -> str:
     ledger = data.get("ledger", [])
     total = sum(int(row.get("received_krw", 0)) for row in ledger)
     cap = int(data.get("cap_krw", 0))
     parts = [f'<p class="total">누적 {total:,}원 / 상한 {cap:,}원</p>']
-    notice = [*data.get("notice", []), *data.get("notice_direct" if direct else "notice_ctee", [])]
+    if ctee is None:
+        ctee = not direct
+    notice = [*data.get("notice", []), *(data.get("notice_direct", []) if direct else []), *(data.get("notice_ctee", []) if ctee else [])]
     if notice:
         parts.append("<ul class=\"notice\">" + "".join(f"<li>{_e(n)}</li>" for n in notice) + "</ul>")
     if ledger:

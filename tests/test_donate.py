@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from build import build_site
-from tools.sitegen.donate import donate_block, is_direct
+from tools.sitegen.donate import donate_block, is_direct, shows_ctee
 from tools.sitegen.tables import support_section
 
 FX = Path("tests/fixtures/site")
@@ -68,6 +68,33 @@ class AccountBlockTest(unittest.TestCase):
 
     def test_block_stays_on_one_paragraph_for_markdown(self):
         self.assertNotIn(chr(10)*2, donate_block(self.ACCOUNT))
+
+
+class CteeAlongsideTest(unittest.TestCase):
+    SITE = {"donate_bank": "토스뱅크", "donate_account": "1002-2516-1071", "ctee_url": "https://ctee.kr/x"}
+
+    def test_ctee_button_stays_hidden_until_registration_is_marked_done(self):
+        self.assertNotIn("ctee.kr", donate_block({**self.SITE, "ctee_ready": False}))
+        self.assertFalse(shows_ctee({**self.SITE, "ctee_ready": False}))
+
+    def test_ctee_button_joins_account_when_ready(self):
+        html = donate_block({**self.SITE, "ctee_ready": True})
+        self.assertIn("1002-2516-1071", html)
+        self.assertIn('href="https://ctee.kr/x"', html)
+        self.assertTrue(shows_ctee({**self.SITE, "ctee_ready": True}))
+
+    def test_ready_flag_without_url_shows_no_button(self):
+        site = {"donate_bank": "토스뱅크", "donate_account": "1002-2516-1071", "ctee_ready": True}
+        self.assertNotIn("크티", donate_block(site))
+        self.assertFalse(shows_ctee(site))
+
+    def test_ctee_only_site_keeps_showing_button(self):
+        self.assertTrue(shows_ctee({"ctee_url": "https://ctee.kr/x"}))
+
+    def test_both_notices_appear_when_both_methods_show(self):
+        html = support_section(DATA, direct=True, ctee=True)
+        self.assertIn("송금 안내", html)
+        self.assertIn("크티 안내", html)
 
 
 class SupportNoticeTest(unittest.TestCase):

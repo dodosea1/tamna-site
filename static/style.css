@@ -176,3 +176,5 @@ pre { overflow-x: auto; padding: 12px; background: var(--bg-2); border-radius: 1
 .donate-number { font-size: 1.15rem; overflow-wrap: anywhere; }
 button.button { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
 button.button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.donate-ctee { flex: 1 1 100%; }
+.donate-ctee p { margin: 0; }

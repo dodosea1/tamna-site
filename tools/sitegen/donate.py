@@ -12,6 +12,17 @@ def is_direct(site: dict) -> bool:
     return bool(site.get("donate_url") or site.get("donate_account"))
 
 
+def shows_ctee(site: dict) -> bool:
+    """크티 버튼을 보일지. 계좌나 링크가 있으면 정산 등록을 마친 뒤(ctee_ready)에만 함께 보인다."""
+    if not site.get("ctee_url"):
+        return False
+    return not is_direct(site) or bool(site.get("ctee_ready"))
+
+
+def _ctee_button(site: dict) -> str:
+    return f'<a class="button" href="{escape(site["ctee_url"])}" rel="noopener">크티로 응원하기</a>'
+
+
 def _link_part(site: dict) -> str:
     url = site["donate_url"]
     if not url.startswith("https://"):
@@ -46,13 +57,14 @@ def _account_part(site: dict) -> str:
 
 def donate_block(site: dict) -> str:
     if not is_direct(site):
-        ctee = site.get("ctee_url", "")
-        if ctee:
-            return f'<a class="button" href="{escape(ctee)}" rel="noopener">크티로 응원하기</a>'
+        if shows_ctee(site):
+            return _ctee_button(site)
         return '<span class="muted">후원 방법: 준비 중</span>'
     parts = []
     if site.get("donate_url"):
         parts.append(_link_part(site))
     if site.get("donate_account"):
         parts.append(_account_part(site))
+    if shows_ctee(site):
+        parts.append(f'<div class="donate-ctee"><p>{_ctee_button(site)}</p></div>')
     return '<div class="donate">' + "".join(parts) + "</div>"
