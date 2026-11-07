@@ -56,8 +56,14 @@ def _email_html(user: str, domain: str) -> str:
     return f'<span class="email" data-u="{escape(user)}" data-d="{escape(domain)}">메일 주소 (스크립트가 켜져 있어야 보입니다)</span>'
 
 
+def _excerpt(log: LogEntry) -> str:
+    items = bullet_items(extract_section(log.body_md, "한 일"))
+    return items[0] if items else ""
+
+
 def _log_link(base: str, log: LogEntry) -> str:
-    return f'<li><a href="{base}/log/{log.date}/">{escape(log.date)} · {escape(log.title)}</a></li>'
+    return (f'<li><a href="{base}/log/{log.date}/"><span class="d">{escape(log.date)}</span>'
+            f'<span class="t">{escape(log.title)}</span><span class="x">{escape(_excerpt(log))}</span></a></li>')
 
 
 def _monthly_link(base: str, m: Monthly) -> str:
@@ -99,6 +105,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "nav": nav,
         "footer_links": f'<a href="{base}/privacy/">개인정보 처리방침</a> · ' if has_privacy else "",
         "site_title": site["title"],
+        "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og.jpg",
         "tagline": site.get("tagline", ""),
         "author": site.get("author", ""),
         "inspiration": site.get("inspiration", ""),
