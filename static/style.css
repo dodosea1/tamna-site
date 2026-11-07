@@ -81,7 +81,19 @@ section.wrap { padding: 72px 24px; }
 .band-text p { max-width: 560px; color: rgba(239, 230, 216, 0.85); margin: 0 0 22px; }
 .band-text .tablewrap { max-width: 820px; }
 
-/* jobs */
+/* jobs: concept figures on the sunset field */
+.jobs-band { position: relative; background-size: cover; background-position: center 30%; padding: 90px 0 60px; }
+.jobs-band::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, var(--bg) 0%, rgba(27, 22, 20, 0.55) 30%, rgba(27, 22, 20, 0.55) 75%, var(--bg) 100%); }
+.jobs-band .wrap { position: relative; }
+.figs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; align-items: end; }
+.fig { text-align: center; }
+.fig img { height: 380px; width: auto; max-width: 100%; display: block; margin: 0 auto 14px; filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.45)); transition: transform 0.3s ease; }
+.fig:hover img { transform: translateY(-6px); }
+.fig h3 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
+.fig p { margin: 0; color: var(--muted); font-size: 0.93rem; }
+@media (max-width: 900px) { .figs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 12px; } .fig img { height: 300px; } }
+@media (prefers-reduced-motion: reduce) { .fig img { transition: none; } }
+/* jobs (legacy) */
 .jobs-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 28px; }
 @media (max-width: 900px) { .jobs-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .job { text-align: center; }
