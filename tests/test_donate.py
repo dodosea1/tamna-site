@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 
 from build import build_site
-from tools.sitegen.donate import donate_block
+from tools.sitegen.donate import donate_block, is_direct
 from tools.sitegen.tables import support_section
 
 FX = Path("tests/fixtures/site")
@@ -36,6 +36,38 @@ class DonateBlockTest(unittest.TestCase):
     def test_block_has_no_blank_line_so_markdown_keeps_it_raw(self):
         html = donate_block({"donate_url": URL, "donate_app": "토스"})
         self.assertNotIn("\n\n", html)
+
+
+class AccountBlockTest(unittest.TestCase):
+    ACCOUNT = {"donate_bank": "토스뱅크", "donate_account": "1002-2516-1071", "ctee_url": "https://ctee.kr/x"}
+
+    def test_account_shows_bank_number_and_copy_button_without_ctee(self):
+        html = donate_block(self.ACCOUNT)
+        self.assertIn("토스뱅크", html)
+        self.assertIn("1002-2516-1071", html)
+        self.assertIn('data-copy="100225161071"', html)
+        self.assertNotIn("ctee.kr", html)
+        self.assertNotIn("<svg", html)
+
+    def test_account_counts_as_direct_mode(self):
+        self.assertTrue(is_direct(self.ACCOUNT))
+
+    def test_account_and_link_show_both(self):
+        html = donate_block({**self.ACCOUNT, "donate_url": URL, "donate_app": "카카오페이"})
+        self.assertIn("<svg", html)
+        self.assertIn("1002-2516-1071", html)
+        self.assertIn("카카오페이로 보내기", html)
+
+    def test_account_with_other_characters_is_refused(self):
+        with self.assertRaises(ValueError):
+            donate_block({"donate_bank": "토스뱅크", "donate_account": "<script>"})
+
+    def test_account_needs_bank_name(self):
+        with self.assertRaises(ValueError):
+            donate_block({"donate_account": "1002-2516-1071"})
+
+    def test_block_stays_on_one_paragraph_for_markdown(self):
+        self.assertNotIn(chr(10)*2, donate_block(self.ACCOUNT))
 
 
 class SupportNoticeTest(unittest.TestCase):
@@ -70,6 +102,12 @@ class BuiltPageTest(unittest.TestCase):
     def test_page_with_direct_link_has_qr_outside_paragraph(self):
         html = self._build(donate_url=URL, donate_app="토스")
         self.assertIn("<svg", html)
+        self.assertNotIn("<p><div", html)
+
+    def test_page_with_account_has_copy_button_and_script(self):
+        html = self._build(donate_bank="토스뱅크", donate_account="1002-2516-1071")
+        self.assertIn('class="button copy"', html)
+        self.assertIn("navigator.clipboard", html)
         self.assertNotIn("<p><div", html)
 
     def test_page_without_direct_link_has_no_qr(self):

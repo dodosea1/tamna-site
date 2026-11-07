@@ -171,3 +171,8 @@ pre { overflow-x: auto; padding: 12px; background: var(--bg-2); border-radius: 1
 .donate-qr svg { display: block; width: 100%; height: auto; border-radius: 4px; }
 .donate-text { flex: 1 1 240px; min-width: 0; }
 .donate-text p { margin: 0 0 8px; }
+.donate-account { flex: 1 1 100%; }
+.donate-account p { margin: 0 0 8px; }
+.donate-number { font-size: 1.15rem; overflow-wrap: anywhere; }
+button.button { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
+button.button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
