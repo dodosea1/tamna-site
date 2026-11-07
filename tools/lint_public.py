@@ -21,7 +21,7 @@ SKIP_DIRS = {"_site", "_preview", "__pycache__"}  # 점으로 시작하는 폴�
 PATTERNS = {
     "windows-path": re.compile(r"[A-Za-z]:\\"),
     "ip-port": re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b"),
-    "email": re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"),
+    "email": re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}\b"),
     "phone": re.compile(r"\b0\d{1,2}-\d{3,4}-\d{4}\b"),
 }
 

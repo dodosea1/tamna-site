@@ -8,22 +8,36 @@
 <link rel="alternate" type="application/rss+xml" title="{{site_title}} 작업 기록" href="{{base}}/feed.xml">
 </head>
 <body>
-<header class="top">
-  <a class="brand" href="{{base}}/">{{site_title}}</a>
-  <nav>
-    <a href="{{base}}/log/">작업 기록</a>
-    <a href="{{base}}/monthly/">이달의 정리</a>
-    {{nav}}
-  </nav>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="{{base}}/">탐라<span class="tag">가제</span></a>
+    <button class="menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">메뉴</button>
+    <nav class="site-nav" id="site-nav">
+      <a href="{{base}}/log/">작업 기록</a>
+      <a href="{{base}}/monthly/">이달의 정리</a>
+      {{nav}}
+    </nav>
+  </div>
 </header>
 <main>
 {{content}}
 </main>
-<footer>
-  <p>{{site_title}} · {{year}} · {{footer_links}}<a href="{{base}}/feed.xml">RSS</a></p>
+<footer class="site-footer">
+  <div class="wrap">
+    <p>{{site_title}} · {{year}} · {{footer_links}}<a href="{{base}}/feed.xml">RSS</a></p>
+  </div>
 </footer>
 <script>
 document.querySelectorAll('.email').forEach(function (e) { e.textContent = e.dataset.u + '@' + e.dataset.d; });
+var toggle = document.querySelector('.menu-toggle');
+var nav = document.getElementById('site-nav');
+if (toggle && nav) {
+  toggle.addEventListener('click', function () {
+    var open = nav.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.textContent = open ? '닫기' : '메뉴';
+  });
+}
 </script>
 </body>
 </html>
