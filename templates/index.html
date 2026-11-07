@@ -1,64 +1,69 @@
 <section class="hero">
   <div class="hero-media">{{hero}}</div>
-  <div class="hero-fade"></div>
-  <div class="wrap hero-inner">
-    <div class="stone-panel hero-panel">
-      <p class="pill">개발 중 · 매일 기록 공개</p>
-      <h1 class="title">탐라 <span class="sub">가제</span></h1>
-      <p class="tagline">{{tagline}}</p>
-      <p class="lead">{{inspiration}}</p>
-      <div class="actions">
-        <a class="slot-btn primary" href="{{base}}/log/">오늘 기록 읽기</a>
-        <a class="slot-btn" href="{{base}}/game/">게임 소개</a>
-      </div>
+  <div class="hero-text">
+    <h1 class="logo">탐라<span class="logo-sub">가제</span></h1>
+    <p class="hero-tag">{{tagline}}</p>
+    <div class="actions">
+      <a class="btn" href="{{base}}/log/">작업 기록</a>
+      <a class="btn ghost" href="{{base}}/game/">게임 소개</a>
     </div>
   </div>
 </section>
-<div class="doldam"></div>
 
-<section class="wrap grid grid-3 cards-row">
-  <div class="stone-card">
-    <h2>지금 하는 일</h2>
-    <p class="muted">{{now_date}} 기록 기준 · 약속 아님</p>
-    <ul class="list">{{now_items}}</ul>
+<section class="wrap now">
+  <div class="two">
+    <div>
+      <p class="eyebrow">지금 하는 일 · {{now_date}} 기록 기준 · 약속 아님</p>
+      <ul class="now-list">{{now_items}}</ul>
+    </div>
+    <div>
+      <p class="eyebrow">최근 작업 기록</p>
+      <ul class="log-list">{{latest_logs}}</ul>
+      <a class="more" href="{{base}}/log/">전체 기록 보기</a>
+    </div>
   </div>
-  <div class="stone-card">
-    <h2>최근 작업 기록</h2>
-    <ul class="list links">{{latest_logs}}</ul>
-    <a class="more" href="{{base}}/log/">전체 기록</a>
-  </div>
-  <div class="stone-card">
-    <h2>이달의 정리</h2>
-    <ul class="list links">{{latest_monthly}}</ul>
-    <a class="more" href="{{base}}/monthly/">전체 보기</a>
+</section>
+
+<section class="band" style="background-image:url('{{base}}/static/art/k2-1000.webp')">
+  <div class="wrap band-text">
+    <p class="eyebrow">세계</p>
+    <h2>신화 시대의 섬, 서천꽃밭의 씨앗</h2>
+    <p>{{inspiration}}</p>
+    <a class="btn ghost" href="{{base}}/game/">세계와 직업 보기</a>
   </div>
 </section>
 
 <section class="wrap jobs">
-  <h2 class="section-title">같이 사냥할 넷</h2>
-  <div class="grid grid-4">
-    <div class="job"><div class="job-frame"><img src="{{base}}/static/art/por-hunter.webp" alt="사냥꾼 초상"></div><h3>사냥꾼</h3><p>한손 돌도끼로 가까이서 싸운다. 도발로 몹을 붙들고 버틴다.</p></div>
-    <div class="job"><div class="job-frame"><img src="{{base}}/static/art/por-simbang.webp" alt="심방 초상"></div><h3>심방</h3><p>회복과 보호막, 부활. 요령을 흔들어 파티를 살린다.</p></div>
-    <div class="job"><div class="job-frame"><img src="{{base}}/static/art/por-kkot.webp" alt="꽃술사 초상"></div><h3>꽃술사</h3><p>서천꽃밭의 꽃으로 멀리서 공격하고 상태이상을 건다.</p></div>
-    <div class="job"><div class="job-frame job-frame-empty"><span>모습 만드는 중</span></div><h3>차사</h3><p>빠른 근접. 오라로 몹을 묶고 등 뒤로 돌아 들어간다.</p></div>
+  <h2 class="h2">같이 사냥할 넷</h2>
+  <div class="jobs-grid">
+    <div class="job"><img src="{{base}}/static/art/por-hunter.webp" alt="사냥꾼"><h3>사냥꾼</h3><p>한손 돌도끼. 도발로 몹을 붙들고 버틴다.</p></div>
+    <div class="job"><img src="{{base}}/static/art/por-simbang.webp" alt="심방"><h3>심방</h3><p>회복과 보호막, 부활. 요령을 흔든다.</p></div>
+    <div class="job"><img src="{{base}}/static/art/por-kkot.webp" alt="꽃술사"><h3>꽃술사</h3><p>서천꽃밭의 꽃으로 멀리서 공격한다.</p></div>
+    <div class="job"><div class="job-empty"></div><h3>차사</h3><p>빠른 근접. 오라로 묶고 등 뒤로 돈다. 모습은 만드는 중.</p></div>
   </div>
-  <p class="center"><a class="more" href="{{base}}/game/">게임과 세계 더 보기</a></p>
 </section>
 
-<section class="scene" style="background-image:url('{{base}}/static/art/k1-1000.webp')">
-  <div class="wrap">
-    <div class="stone-card wide">
-      <h2>누가 무엇을 만드나</h2>
-      <p>{{author}}: 비전공자 한 사람이 AI 도구와 함께 만듭니다. 영역별로 무엇을 AI가 하고 무엇을 사람이 하는지 적어 둡니다.</p>
-      {{ai_table}}
-      <a class="more" href="{{base}}/about/">자세히 보기</a>
+<section class="band band-tall" style="background-image:url('{{base}}/static/art/k1-1000.webp')">
+  <div class="wrap band-text">
+    <p class="eyebrow">만드는 사람</p>
+    <h2>비전공자 한 사람이 AI와 만듭니다</h2>
+    <p>{{author}}. 영역별로 무엇을 AI가 하고 무엇을 사람이 하는지 적어 둡니다.</p>
+    {{ai_table}}
+    <a class="more" href="{{base}}/about/">자세히 보기</a>
+  </div>
+</section>
+
+<section class="wrap tail">
+  <div class="two">
+    <div>
+      <p class="eyebrow">이달의 정리</p>
+      <ul class="log-list">{{latest_monthly}}</ul>
+      <a class="more" href="{{base}}/monthly/">전체 보기</a>
     </div>
-  </div>
-</section>
-
-<section class="wrap">
-  <div class="stone-card soft">
-    <p class="summary-en">{{summary_en}}</p>
-    <p class="cta-row"><a class="slot-btn small" href="{{base}}/feed.xml">RSS 구독</a> {{threads}}</p>
+    <div>
+      <p class="eyebrow">English</p>
+      <p class="summary-en">{{summary_en}}</p>
+      <p class="cta-row"><a class="btn ghost small" href="{{base}}/feed.xml">RSS 구독</a> {{threads}}</p>
+    </div>
   </div>
 </section>
