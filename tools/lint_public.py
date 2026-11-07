@@ -88,8 +88,8 @@ def scan_tree(root: Path, terms: list[str], exclude: tuple[Path, ...] = ()) -> l
             for rule in scan_text(path.name, terms):
                 findings.append((rel, 0, rule))
             continue
-        if path.suffix.lower() not in TEXT_SUFFIXES:
-            continue
+        if path.suffix.lower() not in TEXT_SUFFIXES or path.name.upper().startswith("OFL"):
+            continue  # 글꼴 라이선스 원문(OFL*)은 제3자 공개 문서라 건너뛴다
         for lineno, line in enumerate(path.read_text(encoding="utf-8", errors="replace").splitlines(), start=1):
             for rule in scan_text(line, terms):
                 findings.append((rel, lineno, rule))

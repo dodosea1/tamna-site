@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{title}} · {{site_title}}</title>
+<link rel="preload" href="{{base}}/static/fonts/tamna-title.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="{{base}}/static/style.css">
 <link rel="alternate" type="application/rss+xml" title="{{site_title}} 작업 기록" href="{{base}}/feed.xml">
 </head>
@@ -23,8 +24,10 @@
 {{content}}
 </main>
 <footer class="site-footer">
+  <div class="doldam"></div>
   <div class="wrap">
     <p>{{site_title}} · {{year}} · {{footer_links}}<a href="{{base}}/feed.xml">RSS</a></p>
+    <p class="attribution">제목 글꼴은 제주특별자치도 제주서체(제주한라산, SIL OFL 1.1)입니다. 사이트의 그림과 화면은 개발 중인 게임의 것이며 바뀔 수 있습니다.</p>
   </div>
 </footer>
 <script>
