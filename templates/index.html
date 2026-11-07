@@ -1,7 +1,7 @@
 <section class="hero">
   <div class="hero-media">{{hero}}</div>
   <div class="hero-text">
-    <h1 class="logo">탐라<span class="logo-sub">가제</span></h1>
+    <h1 class="logo">{{logo}}<span class="logo-sub">가제</span></h1>
     <p class="hero-tag">{{tagline}}</p>
     <div class="actions">
       <a class="btn" href="{{base}}/log/">작업 기록</a>
@@ -13,11 +13,11 @@
 <section class="wrap now">
   <div class="two">
     <div>
-      <p class="eyebrow">지금 하는 일 · {{now_date}} 기록 기준 · 약속 아님</p>
+      <p class="eyebrow">{{icon_sun}}지금 하는 일 · {{now_date}} 기록 기준 · 약속 아님</p>
       <ul class="now-list">{{now_items}}</ul>
     </div>
     <div>
-      <p class="eyebrow">최근 작업 기록</p>
+      <p class="eyebrow">{{icon_brush}}최근 작업 기록</p>
       <ul class="log-list">{{latest_logs}}</ul>
       <a class="more" href="{{base}}/log/">전체 기록 보기</a>
     </div>
@@ -26,7 +26,7 @@
 
 <section class="band" style="background-image:url('{{base}}/static/art/scene-hunt-1400.webp')">
   <div class="wrap band-text">
-    <p class="eyebrow">세계</p>
+    <p class="eyebrow">{{icon_peony}}세계</p>
     <h2>신화 시대의 섬, 서천꽃밭의 씨앗</h2>
     <p>{{inspiration}}</p>
     <a class="btn ghost" href="{{base}}/game/">세계와 직업 보기</a>
@@ -34,7 +34,7 @@
 </section>
 
 <section class="wrap jobs">
-  <p class="eyebrow">네 직업</p>
+  <p class="eyebrow">{{icon_bell}}네 직업</p>
   <h2 class="h2">같이 사냥할 넷</h2>
   <div class="pcards">
     <a class="pcard" href="{{base}}/game/"><img src="{{base}}/static/art/por-hunter-900.webp" alt="사냥꾼" loading="lazy"><div class="pcard-text"><h3>사냥꾼</h3><p>한손 돌도끼. 도발로 몹을 붙들고 버틴다.</p></div></a>
@@ -47,7 +47,7 @@
 
 <section class="band band-tall" style="background-image:url('{{base}}/static/art/scene-village-1400.webp')">
   <div class="wrap band-text">
-    <p class="eyebrow">만드는 사람</p>
+    <p class="eyebrow">{{icon_hareubang}}만드는 사람</p>
     <h2>비전공자 한 사람이 AI와 만듭니다</h2>
     <p>{{author}}. 영역별로 무엇을 AI가 하고 무엇을 사람이 하는지 적어 둡니다.</p>
     {{ai_table}}
@@ -59,12 +59,12 @@
 <div class="wrap tail">
   <div class="two">
     <div>
-      <p class="eyebrow">이달의 정리</p>
+      <p class="eyebrow">{{icon_moon}}이달의 정리</p>
       <ul class="log-list">{{latest_monthly}}</ul>
       <a class="more" href="{{base}}/monthly/">전체 보기</a>
     </div>
     <div>
-      <p class="eyebrow">English</p>
+      <p class="eyebrow">{{icon_magpie}}English</p>
       <p class="summary-en">{{summary_en}}</p>
       <p class="cta-row"><a class="btn ghost small" href="{{base}}/feed.xml">RSS 구독</a> {{threads}}</p>
     </div>

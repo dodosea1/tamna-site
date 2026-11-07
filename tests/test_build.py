@@ -88,3 +88,23 @@ class HeroMobileTest(unittest.TestCase):
             self.assertIn('<picture><source media="(max-width: 720px)" srcset="/tamna-site/static/art/key-hero-m-1000.webp">', html)
             self.assertIn('src="/tamna-site/static/art/key-hero-2400.webp"', html)
             self.assertIn('loading="eager"', html)
+
+
+class IconTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory(); self.out = Path(self.tmp.name)
+        build_site(FX, self.out, base="/tamna-site")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_pages_sections_nav_and_hero_carry_minhwa_icons_and_logo(self):
+        about = (self.out / "about/index.html").read_text(encoding="utf-8")
+        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/hareubang.png" alt="">', about)
+        index = (self.out / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<p class="eyebrow"><img class="ico" src="/tamna-site/static/icons/sun.png" alt="">지금 하는 일', index)
+        self.assertIn('<img class="logo-img" src="/tamna-site/static/art/logo-cream-1600.png" alt="탐라"', index)
+        self.assertIn('<a class="brand" href="/tamna-site/"><img src="/tamna-site/static/art/logo-cream-400.png" alt="탐라"', index)
+        self.assertIn('<a href="/tamna-site/about/"><img class="nico" src="/tamna-site/static/icons/hareubang.png" alt="">만드는 사람과 AI</a>', index)
+        log_index = (self.out / "log/index.html").read_text(encoding="utf-8")
+        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/brush.png" alt="">작업 기록</h1>', log_index)

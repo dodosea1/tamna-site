@@ -44,6 +44,14 @@ def _media_html(base: str, path: str, label: str = "") -> str:
     return f"<figure>{tag}{caption}</figure>"
 
 
+PAGE_ICONS = {"about": "hareubang", "game": "peony", "roadmap": "road", "feedback": "letter", "help-wanted": "knot", "together": "cups", "support": "pouch"}
+
+
+def _icon(base: str, name: str, cls: str = "ico") -> str:
+    """민화풍 아이콘 한 개. 장식이라 alt는 비운다."""
+    return f'<img class="{cls}" src="{base}/static/icons/{name}.png" alt="">' if name else ""
+
+
 def _hero_html(base: str, site: dict) -> str:
     """첫 화면 그림. 즉시 로드하고, 세로 화면용 그림이 있으면 <picture>로 바꿔 끼운다."""
     if not site.get("hero_media"):
@@ -111,7 +119,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     monthly = load_monthly(root / "content" / "monthly")
     data = {name: _load_json(root / "data" / f"{name}.json") for name in ("feedback", "roadmap", "support", "ai")}
 
-    nav = "".join(f'<a href="{base}/{p.slug}/">{escape(p.title)}</a>' for p in pages if p.slug != "privacy")
+    nav = "".join(f'<a href="{base}/{p.slug}/">{_icon(base, PAGE_ICONS.get(p.slug, ""), "nico")}{escape(p.title)}</a>' for p in pages if p.slug != "privacy")
     has_privacy = any(p.slug == "privacy" for p in pages)
     common = {
         "base": base,
@@ -133,7 +141,11 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "roadmap_section": roadmap_section(data["roadmap"]),
         "support_section": support_section(data["support"]),
         "ai_table": ai_table(data["ai"]),
+        "logo": f'<img class="logo-img" src="{base}/static/art/logo-cream-1600.png" alt="탐라" width="1600" height="912">',
+        "brand": f'<img src="{base}/static/art/logo-cream-400.png" alt="탐라" width="400" height="228">',
     }
+    for name in ("sun", "brush", "moon", "peony", "hareubang", "bell", "letter", "road", "knot", "cups", "pouch", "magpie"):
+        common[f"icon_{name}"] = _icon(base, name)
 
     def page_html(title: str, content: str) -> str:
         return render_template("base.html", {**common, "title": title, "content": content}, templates)
@@ -181,7 +193,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     # 페이지
     for page in pages:
         body = md_to_html(fill(page.body_md, common))
-        content = render_template("page.html", {**common, "title": page.title, "body": body}, templates)
+        content = render_template("page.html", {**common, "title": page.title, "body": body, "page_icon": _icon(base, PAGE_ICONS.get(page.slug, ""))}, templates)
         _write(out / page.slug / "index.html", page_html(page.title, content))
 
     # RSS
