@@ -1,0 +1,9 @@
+[
+  {"area": "코드(게임·사이트)", "who": "AI 생성, 사람이 지시하고 결과를 확인", "tool": "Claude Code, Unity 6", "changed": "2026-11-07"},
+  {"area": "기획 문서·수치", "who": "AI 작성, 결정은 사람", "tool": "Claude", "changed": "2026-11-07"},
+  {"area": "3D 모델(인물·몬스터)", "who": "AI 생성 + 무료 공개 모델(CC0)", "tool": "Meshy, Quaternius", "changed": "2026-11-07"},
+  {"area": "동작(애니메이션)", "who": "AI 생성 뒤 사람이 수치를 보정", "tool": "Meshy", "changed": "2026-11-07"},
+  {"area": "음악·효과음", "who": "AI 생성, 사람이 고름", "tool": "Higgsfield", "changed": "2026-11-07"},
+  {"area": "그림·UI·시안 영상", "who": "AI 생성, 사람이 고름", "tool": "Higgsfield", "changed": "2026-11-07"},
+  {"area": "사이트 글", "who": "AI 초안, 사람이 확인(매일 기록은 자동)", "tool": "Claude", "changed": "2026-11-07"}
+]
