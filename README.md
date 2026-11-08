@@ -10,7 +10,7 @@
 
 ## 스레드 자동 게시
 
-`tools/threads_post.py`가 공개된 기록을 하루 한 편 공식 API로 올린다. 직접 쓴 글은 `content/threads/YYYY-MM-DD.md`에 둔다. 토큰과 상태는 저장소 밖 `~/.claude/tamna-threads/`에만 있고, 토큰이 없거나 꺼져 있으면 올리지 않는다. `--status`로 상태를, `--dry-run`으로 올릴 글을 본다.
+직접 쓴 글(`content/threads/YYYY-MM-DD.md`, 해요체)이 있는 날만 하루 한 편 올린다. 기록에서 자동으로 글을 만들지 않는다. 지금은 매일 21:00 예약 작업이 `tools/threads_post.py --next`로 글을 꺼내 Chrome에서 스레드 자체 예약으로 넣고, `--mark 날짜`로 적는다. 공식 API 경로(`--run`)는 코드만 남아 꺼져 있다. 상태는 저장소 밖 `~/.claude/tamna-threads/`에만 있다.
 
 ## 검사에 걸리면
 

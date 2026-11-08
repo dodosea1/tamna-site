@@ -10,14 +10,14 @@ class NextPostTest(Base):
     def nxt(self, now=NOW, published=True, url_ok=True):
         return next_post(self.root, self.store, now, ["비밀어"], lambda p: published, lambda u: url_ok)
 
-    def test_returns_oldest_unposted_log_with_text_and_link(self):
-        self.log("2026-11-09")
-        self.log("2026-11-08")
+    def test_returns_oldest_unposted_hand_written_post(self):
+        self.post("2026-11-09")
+        self.post("2026-11-08")
         code, out = self.nxt()
         self.assertEqual(code, 0)
         self.assertTrue(out["due"])
         self.assertEqual(out["date"], "2026-11-08")
-        self.assertIn("https://example.test/site/log/2026-11-08/", out["text"])
+        self.assertEqual(out["text"], "글 2026-11-08")
         self.assertEqual(out["media_path"], "")
 
     def test_media_path_is_absolute_local_file(self):
@@ -32,8 +32,8 @@ class NextPostTest(Base):
         self.assertEqual((code, out["due"]), (0, False))
 
     def test_already_scheduled_today_gives_nothing(self):
-        self.log("2026-11-08")
-        self.log("2026-11-09")
+        self.post("2026-11-08")
+        self.post("2026-11-09")
         mark_scheduled(self.store, "2026-11-08", NOW)
         code, out = self.nxt()
         self.assertEqual((code, out["due"]), (0, False))
@@ -47,12 +47,13 @@ class NextPostTest(Base):
         self.assertNotIn("비밀어", out["reason"])
 
     def test_unpublished_source_blocks(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         code, out = self.nxt(published=False)
         self.assertEqual((code, out["due"]), (1, False))
 
-    def test_dead_link_blocks(self):
-        self.log("2026-11-09")
+    def test_dead_media_link_blocks(self):
+        (self.root / "media/a.png").write_bytes(b"x")
+        self.thread("2026-11-09", "직접 쓴 글", head="media: media/a.png\n")
         code, out = self.nxt(url_ok=False)
         self.assertEqual((code, out["due"]), (1, False))
 

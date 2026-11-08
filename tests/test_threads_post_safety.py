@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
-from tests.test_threads_post import LOG, NOW, SITE, Boom, FakeApi
+from tests.test_threads_post import NOW, SITE, Boom, FakeApi
 from tools.threads_post import REFRESH_AFTER, Api, Store, ThreadsError, first_refresh_time, run
 
 KST = timezone(timedelta(hours=9))
@@ -26,8 +26,8 @@ class Base(unittest.TestCase):
         self.store.save_config({"enabled": True, "start_date": "2026-11-08", "username": "tamna"})
         self.store.save_token("old-token", NOW)
 
-    def log(self, d):
-        (self.root / f"content/log/{d}.md").write_text(LOG.format(d=d), encoding="utf-8")
+    def post(self, d):
+        (self.root / f"content/threads/{d}.md").write_text(f"---\n---\n글 {d}\n", encoding="utf-8")
 
     def go(self, api=None, now=NOW, **kw):
         api = api or FakeApi()
@@ -41,7 +41,7 @@ class GoneContainer(FakeApi):
 
 class StuckPendingTest(Base):
     def test_recent_status_failure_keeps_pending_for_the_next_run(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.go(Boom())
         code, api = self.go(GoneContainer(), now=NOW + timedelta(hours=1))
         self.assertEqual(code, 1)
@@ -49,9 +49,9 @@ class StuckPendingTest(Base):
         self.assertTrue(self.store.load_state()["pending"])
 
     def test_old_unknown_pending_is_skipped_never_reposted_and_queue_moves_on(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.go(Boom())
-        self.log("2026-11-10")
+        self.post("2026-11-10")
         later = NOW + timedelta(days=2)
         code, api = self.go(GoneContainer(), now=later)
         state = self.store.load_state()
@@ -62,7 +62,7 @@ class StuckPendingTest(Base):
         self.assertIn("2026-11-09", self.store.log_path.read_text(encoding="utf-8"))
 
     def test_in_progress_pending_waits_without_new_post(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.go(Boom())
         code, api = self.go(FakeApi(statuses=["IN_PROGRESS"]))
         self.assertEqual((code, api.created, api.published), (0, [], []))
@@ -70,7 +70,7 @@ class StuckPendingTest(Base):
 
 class UnpublishedSourceTest(Base):
     def test_unpushed_post_is_not_sent_and_is_reported_as_a_problem(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         code, api = self.go(is_published=lambda path: False)
         self.assertEqual(code, 1)
         self.assertEqual(api.created, [])

@@ -1,6 +1,6 @@
 """공개된 작업 기록을 하루 한 편 스레드에 올린다(공식 Threads API).
 
-글 고르기: content/threads/YYYY-MM-DD.md(직접 쓴 글)가 있으면 그것을, 없으면 같은 날 기록에서 만든다.
+글 고르기: content/threads/YYYY-MM-DD.md(직접 쓴 글)만 올린다. 기록 문장을 잘라 만든 글은 기계처럼 읽혀 쓰지 않는다(2026-11-09).
 오늘 날짜는 기록이 아직 늘 수 있어 기다린다. 가장 오래된 안 올린 날부터 한 편씩 올린다.
 
 비밀 값과 상태는 저장소 밖 ~/.claude/tamna-threads/ 에만 둔다. 토큰이 없거나 꺼져 있으면 아무것도 올리지 않는다.
@@ -35,7 +35,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from tools.lint_public import DEFAULT_TERMS, load_terms, scan_text  # noqa: E402
-from tools.sitegen.content import bullet_items, extract_section, is_draft  # noqa: E402
+from tools.sitegen.content import is_draft  # noqa: E402
 from tools.sitegen.frontmatter import parse_frontmatter  # noqa: E402
 
 KST = timezone(timedelta(hours=9))
@@ -77,43 +77,24 @@ def text_length(text: str) -> int:
     return total
 
 
-def compose_from_log(title: str, body_md: str, link: str) -> str | None:
-    for item in bullet_items(extract_section(body_md, "한 일")):
-        text = f"{title}\n\n{item}\n\n{link}"
-        if text_length(text) <= MAX_TEXT:
-            return text
-    return None
-
-
 def _dates(root: Path, start: str, today: str) -> list[str]:
     found = set()
-    for folder in ("log", "threads"):
-        for path in (root / "content" / folder).glob("*.md"):
-            if DATE_FILE.match(path.stem) and start <= path.stem < today:
-                found.add(path.stem)
+    for path in (root / "content" / "threads").glob("*.md"):
+        if DATE_FILE.match(path.stem) and start <= path.stem < today:
+            found.add(path.stem)
     return sorted(found)
 
 
 def load_due_post(root: Path, start: str, posted: set[str], now: datetime) -> Post | None:
-    site_url = json.loads((root / "data" / "site.json").read_text(encoding="utf-8")).get("site_url", "").rstrip("/")
     today = now.astimezone(KST).date().isoformat()
     for day in _dates(root, start, today):
         if day in posted:
             continue
         hand = root / "content" / "threads" / f"{day}.md"
-        if hand.exists():
-            meta, body = parse_frontmatter(hand.read_text(encoding="utf-8"))
-            if is_draft(meta):
-                continue
-            return Post(day, body.strip(), meta.get("media", ""), source=hand.relative_to(root).as_posix())
-        log = root / "content" / "log" / f"{day}.md"
-        meta, body = parse_frontmatter(log.read_text(encoding="utf-8"))
+        meta, body = parse_frontmatter(hand.read_text(encoding="utf-8"))
         if is_draft(meta):
             continue
-        link = f"{site_url}/log/{day}/"
-        text = compose_from_log(meta.get("title", day), body, link)
-        if text:
-            return Post(day, text, link=link, source=log.relative_to(root).as_posix())
+        return Post(day, body.strip(), meta.get("media", ""), source=hand.relative_to(root).as_posix())
     return None
 
 

@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from tools.threads_post import (
-    MAX_TEXT, Post, Store, ThreadsError, compose_from_log, load_due_post, run, text_length, validate_post,
+    MAX_TEXT, Post, Store, ThreadsError, load_due_post, run, text_length, validate_post,
 )
 
 KST = timezone(timedelta(hours=9))
@@ -62,6 +62,9 @@ class Base(unittest.TestCase):
         self.store.save_config({"enabled": True, "start_date": "2026-11-08", "username": "tamna"})
         self.store.save_token("old-token", NOW)
 
+    def post(self, d):
+        self.thread(d, f"글 {d}")
+
     def log(self, d):
         (self.root / f"content/log/{d}.md").write_text(LOG.format(d=d), encoding="utf-8")
 
@@ -86,40 +89,28 @@ class DueTest(Base):
         self.thread("2026-11-09", "직접 쓴 글")
         self.assertEqual(load_due_post(self.root, "2026-11-08", set(), NOW).text, "직접 쓴 글")
 
-    def test_log_becomes_post_with_title_first_item_and_link(self):
+    def test_log_alone_is_never_posted(self):
         self.log("2026-11-09")
-        post = load_due_post(self.root, "2026-11-08", set(), NOW)
-        self.assertIn("제목 2026-11-09", post.text)
-        self.assertIn("첫 줄을 했다.", post.text)
-        self.assertIn(f"{SITE}/log/2026-11-09/", post.text)
+        self.assertIsNone(load_due_post(self.root, "2026-11-08", set(), NOW))
 
     def test_oldest_unposted_comes_first(self):
-        self.log("2026-11-08")
-        self.log("2026-11-09")
+        self.post("2026-11-08")
+        self.post("2026-11-09")
         self.assertEqual(load_due_post(self.root, "2026-11-08", set(), NOW).date, "2026-11-08")
         self.assertEqual(load_due_post(self.root, "2026-11-08", {"2026-11-08"}, NOW).date, "2026-11-09")
 
     def test_today_waits_because_the_log_may_still_grow(self):
-        self.log("2026-11-10")
+        self.post("2026-11-10")
         self.assertIsNone(load_due_post(self.root, "2026-11-08", set(), NOW))
 
     def test_dates_before_start_are_never_posted(self):
-        self.log("2026-11-07")
+        self.post("2026-11-07")
         self.assertIsNone(load_due_post(self.root, "2026-11-08", set(), NOW))
 
     def test_draft_blocks_that_date_and_does_not_fall_back_to_log(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.thread("2026-11-09", "초안", "draft: true\n")
         self.assertIsNone(load_due_post(self.root, "2026-11-08", set(), NOW))
-
-    def test_compose_skips_an_item_too_long_for_the_limit(self):
-        body = "## 한 일\n- " + "가" * 600 + "\n- 짧은 줄.\n"
-        text = compose_from_log("제목", body, f"{SITE}/log/x/")
-        self.assertIn("짧은 줄.", text)
-        self.assertLessEqual(text_length(text), MAX_TEXT)
-
-    def test_compose_returns_none_when_nothing_fits(self):
-        self.assertIsNone(compose_from_log("제목", "## 한 일\n- " + "가" * 600 + "\n", "u"))
 
 
 class ValidateTest(Base):
@@ -151,54 +142,54 @@ class ValidateTest(Base):
 
 class RunTest(Base):
     def test_posts_one_and_records_it(self):
-        self.log("2026-11-08")
-        self.log("2026-11-09")
+        self.post("2026-11-08")
+        self.post("2026-11-09")
         code, api = self.go()
         self.assertEqual(code, 0)
         self.assertEqual(len(api.published), 1)
         self.assertEqual(self.store.load_state()["posted"]["2026-11-08"], "p1")
 
     def test_second_run_same_day_posts_nothing(self):
-        self.log("2026-11-08")
-        self.log("2026-11-09")
+        self.post("2026-11-08")
+        self.post("2026-11-09")
         self.go()
         _, api = self.go()
         self.assertEqual(api.published, [])
 
     def test_disabled_posts_nothing(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.store.save_config({"enabled": False, "start_date": "2026-11-08", "username": "tamna"})
         _, api = self.go()
         self.assertEqual(api.created, [])
 
     def test_no_token_posts_nothing(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.store.token_path.unlink()
         code, api = self.go()
         self.assertEqual(api.created, [])
         self.assertEqual(code, 0)
 
     def test_wrong_account_stops_before_creating(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         code, api = self.go(FakeApi(username="someone_else"))
         self.assertEqual(api.created, [])
         self.assertNotEqual(code, 0)
 
     def test_blocked_post_is_not_sent_and_later_dates_wait(self):
         self.thread("2026-11-08", "비밀어 포함")
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         code, api = self.go()
         self.assertEqual(api.created, [])
         self.assertNotEqual(code, 0)
 
     def test_dry_run_sends_nothing_and_records_nothing(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         code, api = self.go(dry_run=True)
         self.assertEqual((code, api.created, api.published), (0, [], []))
         self.assertEqual(self.store.load_state()["posted"], {})
 
     def test_dry_run_works_without_token_or_enable(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.store.token_path.unlink()
         self.store.save_config({"enabled": False, "start_date": "2026-11-08", "username": "tamna"})
         code, api = self.go(dry_run=True)
@@ -206,14 +197,14 @@ class RunTest(Base):
         self.assertIn("2026-11-09", self.store.log_path.read_text(encoding="utf-8"))
 
     def test_container_error_is_reported_and_not_marked_posted(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         code, api = self.go(FakeApi(statuses=["ERROR"]))
         self.assertNotEqual(code, 0)
         self.assertEqual(api.published, [])
         self.assertNotIn("2026-11-09", self.store.load_state()["posted"])
 
     def test_crash_during_publish_never_double_posts(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         code, _ = self.go(Boom())
         self.assertNotEqual(code, 0)
         self.assertEqual(self.store.load_state()["pending"]["date"], "2026-11-09")
@@ -223,14 +214,14 @@ class RunTest(Base):
         self.assertIn("2026-11-09", self.store.load_state()["posted"])
 
     def test_pending_finished_container_is_published_without_recreating(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.go(Boom())
         code, api = self.go(FakeApi(statuses=["FINISHED"]))
         self.assertEqual(code, 0)
         self.assertEqual((api.created, api.published), ([], ["c1"]))
 
     def test_expired_pending_is_cleared_and_retried(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.go(Boom())
         code, api = self.go(FakeApi(statuses=["EXPIRED", "FINISHED"]))
         self.assertEqual(code, 0)
@@ -256,7 +247,7 @@ class RunTest(Base):
         self.assertEqual(self.store.load_token()["token"], "old-token")
 
     def test_token_is_never_written_to_the_run_log(self):
-        self.log("2026-11-09")
+        self.post("2026-11-09")
         self.go()
         self.assertNotIn("old-token", self.store.log_path.read_text(encoding="utf-8"))
 
