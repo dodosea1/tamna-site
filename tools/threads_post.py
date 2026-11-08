@@ -181,11 +181,11 @@ class Store:
     def save_state(self, value: dict) -> None:
         self._write_json(self.state_path, value)
 
-    def log(self, now: datetime, message: str) -> None:
+    def log(self, now: datetime, message: str, echo: bool = True) -> None:
         self.home.mkdir(parents=True, exist_ok=True)
         with self.log_path.open("a", encoding="utf-8") as f:
             f.write(f"{now.isoformat(timespec='seconds')} {message}\n")
-        if sys.stdout:
+        if echo and sys.stdout:
             print(message)
 
 
@@ -380,6 +380,45 @@ def run(root, store: Store, api, now: datetime, terms: list[str], sleep=time.sle
         return 1
 
 
+def next_post(root, store: Store, now: datetime, terms: list[str], is_published, url_ok) -> tuple[int, dict]:
+    """Chrome 예약용. 오늘 예약할 글 하나를 검사까지 마쳐 돌려준다. 하루 한 편, 오늘 기록은 다음 날."""
+    root = Path(root)
+    config, state = store.load_config(), store.load_state()
+    if state["last_post_day"] == now.astimezone(KST).date().isoformat():
+        return 0, {"due": False, "reason": "오늘은 이미 예약함"}
+    post = load_due_post(root, config["start_date"], set(state["posted"]), now)
+    if not post:
+        return 0, {"due": False, "reason": "올릴 글 없음"}
+    reason = ""
+    if not is_published(post.source):
+        reason = f"공개 저장소에 없음, publish.py로 올려야 함: {post.date}"
+    elif problems := validate_post(post, root, terms):
+        reason = f"올리지 않음: {post.date}: {problems}"
+    else:
+        site_url = json.loads((root / "data" / "site.json").read_text(encoding="utf-8")).get("site_url", "").rstrip("/")
+        urls = [u for u in (f"{site_url}/{post.media}" if post.media else "", post.link) if u]
+        if not all(url_ok(u) for u in urls):
+            reason = f"공개 주소가 아직 안 열림: {post.date}"
+    if reason:
+        store.log(now, reason, echo=False)
+        return 1, {"due": False, "reason": reason}
+    media_path = str((root / post.media).resolve()) if post.media else ""
+    return 0, {"due": True, "date": post.date, "text": post.text, "media_path": media_path, "account": config["username"]}
+
+
+def mark_scheduled(store: Store, day: str, now: datetime) -> int:
+    """Chrome으로 예약을 마친 기록 날짜를 적는다. 같은 날을 두 번 적지 않는다."""
+    state = store.load_state()
+    if not DATE_FILE.match(day) or day in state["posted"]:
+        store.log(now, f"예약 표시 거절: {day}")
+        return 1
+    state["posted"][day] = "chrome"
+    state["last_post_day"] = now.astimezone(KST).date().isoformat()
+    store.save_state(state)
+    store.log(now, f"Chrome 예약 완료: {day}")
+    return 0
+
+
 def _git_published(root: Path):
     """파일이 origin/main에 내용까지 같게 올라가 있는지 본다."""
 
@@ -447,8 +486,9 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description="스레드 자동 게시")
     group = parser.add_mutually_exclusive_group(required=True)
-    for flag in ("--run", "--dry-run", "--status", "--set-token", "--enable", "--disable"):
+    for flag in ("--run", "--dry-run", "--status", "--set-token", "--enable", "--disable", "--next"):
         group.add_argument(flag, action="store_true")
+    group.add_argument("--mark", metavar="YYYY-MM-DD", help="Chrome으로 예약을 마친 기록 날짜")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parent.parent))
     parser.add_argument("--terms", default=str(DEFAULT_TERMS))
     args = parser.parse_args(argv)
@@ -459,6 +499,8 @@ def main(argv: list[str] | None = None) -> int:
         return _set_token(store)
     if args.enable or args.disable:
         return _set_enabled(store, args.enable)
+    if args.mark:
+        return mark_scheduled(store, args.mark, datetime.now(KST))
     root = Path(args.root)
     now = datetime.now(KST)
     try:
@@ -466,6 +508,10 @@ def main(argv: list[str] | None = None) -> int:
     except FileNotFoundError:
         store.log(now, "금지어 목록이 없어 올리지 않음")
         return 2
+    if args.next:
+        code, out = next_post(root, store, now, terms, _git_published(root), Api("").url_ok)
+        print(json.dumps(out, ensure_ascii=False))
+        return code
     token = store.load_token()
     api = Api(token["token"] if token else "")
     return run(root, store, api, now, terms, dry_run=args.dry_run, is_published=_git_published(root))

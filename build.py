@@ -66,6 +66,20 @@ def _hero_html(base: str, site: dict) -> str:
     return html
 
 
+VERIFY_NAMES = ("google-site-verification", "naver-site-verification")
+
+
+def _verify_meta(site: dict) -> str:
+    """검색 등록 소유 확인 태그. 알려진 이름과 영문·숫자·_- 값만 넣는다."""
+    found = site.get("site_verification") or {}
+    tags = []
+    for name in VERIFY_NAMES:
+        value = str(found.get(name, ""))
+        if value and all(c.isascii() and (c.isalnum() or c in "_-") for c in value):
+            tags.append(f'<meta name="{name}" content="{value}">')
+    return "\n".join(tags)
+
+
 def _link_or_prep(url: str, label: str) -> str:
     if url:
         return f'<a class="button" href="{escape(url)}" rel="noopener">{escape(label)}</a>'
@@ -129,6 +143,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "site_title": site["title"],
         "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og.jpg",
         "tagline": site.get("tagline", ""),
+        "verify_meta": _verify_meta(site),
         "author": site.get("author", ""),
         "inspiration": site.get("inspiration", ""),
         "summary_en": site.get("summary_en", ""),
