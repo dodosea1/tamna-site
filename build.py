@@ -163,8 +163,9 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     for name in ("sun", "brush", "moon", "peony", "hareubang", "bell", "letter", "road", "knot", "cups", "pouch", "magpie"):
         common[f"icon_{name}"] = _icon(base, name)
 
-    def page_html(title: str, content: str) -> str:
-        return render_template("base.html", {**common, "title": title, "content": content}, templates)
+    def page_html(title: str, content: str, page_title: str = "") -> str:
+        page_title = page_title or f"{title} · {site['title']}"
+        return render_template("base.html", {**common, "title": title, "page_title": page_title, "content": content}, templates)
 
     if out.exists():
         shutil.rmtree(out)
@@ -181,7 +182,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "latest_logs": "".join(_log_link(base, log) for log in logs[:5]) or "<li>아직 없습니다</li>",
         "latest_monthly": _monthly_link(base, monthly[0]) if monthly else "<li>아직 없습니다</li>",
     }
-    _write(out / "index.html", page_html("홈", render_template("index.html", index_ctx, templates)))
+    _write(out / "index.html", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"]))
 
     # 작업 기록
     for log in logs:
