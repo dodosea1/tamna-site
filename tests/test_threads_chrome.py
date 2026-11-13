@@ -57,6 +57,28 @@ class NextPostTest(Base):
         code, out = self.nxt(url_ok=False)
         self.assertEqual((code, out["due"]), (1, False))
 
+    def test_today_excluded_by_default_included_with_flag(self):
+        self.post("2026-11-10")
+        code, out = self.nxt()
+        self.assertEqual((code, out["due"]), (0, False))
+        code, out = next_post(self.root, self.store, NOW, ["비밀어"], lambda p: True, lambda u: True, include_today=True)
+        self.assertEqual((code, out["date"]), (0, "2026-11-10"))
+
+    def test_topic_is_returned(self):
+        self.thread("2026-11-09", "직접 쓴 글", head="topic: Game Dev\n")
+        code, out = self.nxt()
+        self.assertEqual((code, out["topic"]), (0, "Game Dev"))
+
+    def test_no_topic_gives_empty_string(self):
+        self.post("2026-11-09")
+        self.assertEqual(self.nxt()[1]["topic"], "")
+
+    def test_bad_topic_blocks(self):
+        for bad in ("#게임", "Game.Dev", "A&B", "가" * 51):
+            self.thread("2026-11-09", "직접 쓴 글", head=f"topic: {bad}\n")
+            code, out = self.nxt()
+            self.assertEqual((code, out["due"]), (1, False), bad)
+
 
 class MarkTest(Base):
     def test_mark_records_day_and_rejects_repeat(self):

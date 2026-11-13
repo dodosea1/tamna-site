@@ -11,6 +11,7 @@
   python tools/threads_post.py --enable       자동 게시 켜기 (--disable 끄기)
   python tools/threads_post.py --run          한 번 실행(예약 작업이 부른다)
   python tools/threads_post.py --status       상태 보기
+  python tools/threads_post.py --next --today  Chrome 예약용: 오늘 글까지 골라 JSON으로 낸다
 """
 
 from __future__ import annotations
@@ -41,6 +42,7 @@ from tools.sitegen.frontmatter import parse_frontmatter  # noqa: E402
 KST = timezone(timedelta(hours=9))
 MAX_TEXT = 500
 MAX_LINKS = 5
+MAX_TOPIC = 50
 REFRESH_AFTER = timedelta(days=30)
 PENDING_GIVE_UP = timedelta(hours=24)
 WAIT_SECONDS = 30
@@ -66,6 +68,7 @@ class Post:
     media: str = ""
     link: str = ""
     source: str = ""
+    topic: str = ""
 
 
 def text_length(text: str) -> int:
@@ -77,24 +80,24 @@ def text_length(text: str) -> int:
     return total
 
 
-def _dates(root: Path, start: str, today: str) -> list[str]:
+def _dates(root: Path, start: str, today: str, include_today: bool = False) -> list[str]:
     found = set()
     for path in (root / "content" / "threads").glob("*.md"):
-        if DATE_FILE.match(path.stem) and start <= path.stem < today:
+        if DATE_FILE.match(path.stem) and start <= path.stem and (path.stem < today or (include_today and path.stem == today)):
             found.add(path.stem)
     return sorted(found)
 
 
-def load_due_post(root: Path, start: str, posted: set[str], now: datetime) -> Post | None:
+def load_due_post(root: Path, start: str, posted: set[str], now: datetime, include_today: bool = False) -> Post | None:
     today = now.astimezone(KST).date().isoformat()
-    for day in _dates(root, start, today):
+    for day in _dates(root, start, today, include_today):
         if day in posted:
             continue
         hand = root / "content" / "threads" / f"{day}.md"
         meta, body = parse_frontmatter(hand.read_text(encoding="utf-8"))
         if is_draft(meta):
             continue
-        return Post(day, body.strip(), meta.get("media", ""), source=hand.relative_to(root).as_posix())
+        return Post(day, body.strip(), meta.get("media", ""), source=hand.relative_to(root).as_posix(), topic=str(meta.get("topic", "")).strip())
     return None
 
 
@@ -110,6 +113,8 @@ def validate_post(post: Post, root: Path, terms: list[str]) -> list[str]:
     problems += [f"공개 검사: {rule}" for rule in scan_text(post.text, terms)]
     if post.media:
         problems += _media_problems(post.media, root)
+    if post.topic and (len(post.topic) > MAX_TOPIC or any(c in post.topic for c in "#.&")):
+        problems.append(f"주제 태그는 {MAX_TOPIC}자 이하, #·.·& 없이 하나만")
     return problems
 
 
@@ -206,6 +211,8 @@ class Api:
             is_video = Path(post.media).suffix.lower() in VIDEO_SUFFIXES
             params["media_type"] = "VIDEO" if is_video else "IMAGE"
             params["video_url" if is_video else "image_url"] = media_url
+        if post.topic:
+            params["topic_tag"] = post.topic  # 1~50자, . & 없음, 한 글에 하나(공식 문서, validate_post가 검사)
         return self._call("POST", f"/v1.0/{user_id}/threads", params)["id"]
 
     def status(self, container: str) -> str:
@@ -361,13 +368,14 @@ def run(root, store: Store, api, now: datetime, terms: list[str], sleep=time.sle
         return 1
 
 
-def next_post(root, store: Store, now: datetime, terms: list[str], is_published, url_ok) -> tuple[int, dict]:
-    """Chrome 예약용. 오늘 예약할 글 하나를 검사까지 마쳐 돌려준다. 하루 한 편, 오늘 기록은 다음 날."""
+def next_post(root, store: Store, now: datetime, terms: list[str], is_published, url_ok, include_today: bool = False) -> tuple[int, dict]:
+    """Chrome 예약용. 오늘 예약할 글 하나를 검사까지 마쳐 돌려준다. 하루 한 편.
+    기본은 오늘 기록을 다음 날로 미룬다. include_today는 20:40에 쓴 오늘 글을 다음 날 21:00으로 예약할 때 쓴다(docs/63)."""
     root = Path(root)
     config, state = store.load_config(), store.load_state()
     if state["last_post_day"] == now.astimezone(KST).date().isoformat():
         return 0, {"due": False, "reason": "오늘은 이미 예약함"}
-    post = load_due_post(root, config["start_date"], set(state["posted"]), now)
+    post = load_due_post(root, config["start_date"], set(state["posted"]), now, include_today)
     if not post:
         return 0, {"due": False, "reason": "올릴 글 없음"}
     reason = ""
@@ -384,7 +392,7 @@ def next_post(root, store: Store, now: datetime, terms: list[str], is_published,
         store.log(now, reason, echo=False)
         return 1, {"due": False, "reason": reason}
     media_path = str((root / post.media).resolve()) if post.media else ""
-    return 0, {"due": True, "date": post.date, "text": post.text, "media_path": media_path, "account": config["username"]}
+    return 0, {"due": True, "date": post.date, "text": post.text, "media_path": media_path, "topic": post.topic, "account": config["username"]}
 
 
 def mark_scheduled(store: Store, day: str, now: datetime) -> int:
@@ -470,6 +478,7 @@ def main(argv: list[str] | None = None) -> int:
     for flag in ("--run", "--dry-run", "--status", "--set-token", "--enable", "--disable", "--next"):
         group.add_argument(flag, action="store_true")
     group.add_argument("--mark", metavar="YYYY-MM-DD", help="Chrome으로 예약을 마친 기록 날짜")
+    parser.add_argument("--today", action="store_true", help="--next에서 오늘 글도 고른다(다음 날 21:00 예약용)")
     parser.add_argument("--root", default=str(Path(__file__).resolve().parent.parent))
     parser.add_argument("--terms", default=str(DEFAULT_TERMS))
     args = parser.parse_args(argv)
@@ -490,7 +499,7 @@ def main(argv: list[str] | None = None) -> int:
         store.log(now, "금지어 목록이 없어 올리지 않음")
         return 2
     if args.next:
-        code, out = next_post(root, store, now, terms, _git_published(root), Api("").url_ok)
+        code, out = next_post(root, store, now, terms, _git_published(root), Api("").url_ok, include_today=args.today)
         print(json.dumps(out, ensure_ascii=False))
         return code
     token = store.load_token()
