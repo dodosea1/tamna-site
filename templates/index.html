@@ -4,7 +4,7 @@
     <h1 class="logo">{{logo}}<span class="logo-sub">가제</span></h1>
     <p class="hero-tag">{{tagline}}</p>
     <div class="actions">
-      <a class="btn" href="{{base}}/log/">작업 기록</a>
+      {{hero_cta}}
       <a class="btn ghost" href="{{base}}/game/">게임 소개</a>
     </div>
   </div>
@@ -13,7 +13,9 @@
 <section class="wrap now">
   <div class="two">
     <div>
-      <p class="eyebrow">{{icon_sun}}지금 하는 일 · {{now_date}} 기록 기준 · 약속 아님</p>
+      <p class="eyebrow">{{icon_sun}}지금 게임 화면</p>
+      {{play}}
+      <p class="now-head">다음에 손댈 것 · {{now_date}} 기록 기준 · 약속 아님</p>
       <ul class="now-list">{{now_items}}</ul>
     </div>
     <div>

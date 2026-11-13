@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from datetime import date
@@ -45,12 +46,56 @@ def _media_html(base: str, path: str, label: str = "") -> str:
     return f"<figure>{tag}{caption}</figure>"
 
 
+# 위쪽 메뉴에 두는 다섯 곳. 나머지 페이지는 아래쪽(푸터)으로 간다.
+MAIN_NAV = ("game", "log", "together", "feedback", "support")
+NAV_LABELS = {"log": "작업 기록", "monthly": "이달의 정리"}
+# 공유 미리보기 그림. GIF는 수 MB라 미리보기에서 잘리거나 실패해 빼고, 없으면 기본 og.jpg를 쓴다.
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
+
+
+def _plain(md: str) -> str:
+    """마크다운 한 줄을 설명문용 평문으로."""
+    md = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", md)
+    md = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", md)
+    md = re.sub(r"\{\{[^}]*\}\}", "", md)
+    md = re.sub(r"[*_`#>]", "", md)
+    return re.sub(r"\s+", " ", md).strip()
+
+
+def _clip(text: str, limit: int = 150) -> str:
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
+
+
+def _first_paragraph(md: str) -> str:
+    for line in md.split("\n"):
+        line = line.strip()
+        if line and not line.startswith(("#", "-", "|", "{{", "<")):
+            text = _plain(line)
+            if text:
+                return text
+    return ""
+
+
+def _play_html(base: str, site: dict) -> str:
+    """홈의 실제 게임 화면. 자동 재생·소리 없음·반복. 설정이 없으면 비운다."""
+    path = site.get("play_media", "")
+    if not path:
+        return ""
+    label = escape(site.get("play_label", ""))
+    if path.lower().endswith(".mp4"):
+        tag = (f'<video class="play-video" src="{base}/{path}" autoplay muted loop playsinline preload="metadata" '
+               f'tabindex="0" title="누르면 멈추고, 다시 누르면 재생합니다"></video>')
+    else:
+        tag = f'<img class="play-video" src="{base}/{path}" alt="{label}" loading="lazy">'
+    return f'<figure class="play">{tag}<figcaption>{label}</figcaption></figure>'
+
+
 PAGE_ICONS = {"about": "hareubang", "game": "peony", "roadmap": "road", "feedback": "letter", "help-wanted": "knot", "together": "cups", "support": "pouch"}
 
 
 def _icon(base: str, name: str, cls: str = "ico") -> str:
     """민화풍 아이콘 한 개. 장식이라 alt는 비운다."""
-    return f'<img class="{cls}" src="{base}/static/icons/{name}.png" alt="">' if name else ""
+    return f'<img class="{cls}" src="{base}/static/icons/{name}.webp" alt="">' if name else ""
 
 
 def _hero_html(base: str, site: dict) -> str:
@@ -103,7 +148,7 @@ def _log_link(base: str, log: LogEntry) -> str:
 
 
 def _monthly_link(base: str, m: Monthly) -> str:
-    return f'<li><a href="{base}/monthly/{m.month}/">{escape(m.month)} · {escape(m.title)}</a></li>'
+    return f'<li><a href="{base}/monthly/{m.month}/"><span class="d">{escape(m.month)}</span><span class="t">{escape(m.title)}</span></a></li>'
 
 
 def _guard_out(root: Path, out: Path) -> None:
@@ -134,12 +179,20 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     monthly = load_monthly(root / "content" / "monthly")
     data = {name: _load_json(root / "data" / f"{name}.json") for name in ("feedback", "roadmap", "support", "ai")}
 
-    nav = "".join(f'<a href="{base}/{p.slug}/">{_icon(base, PAGE_ICONS.get(p.slug, ""), "nico")}{escape(p.title)}</a>' for p in pages if p.slug != "privacy")
+    titles = {**{p.slug: p.title for p in pages}, **NAV_LABELS}
+    icons = {**PAGE_ICONS, "log": "brush", "monthly": "moon"}
+    nav = "".join(f'<a href="{base}/{slug}/">{_icon(base, icons.get(slug, ""), "nico")}{escape(titles[slug])}</a>' for slug in MAIN_NAV if slug in titles)
+    footer_slugs = ["monthly"] + [p.slug for p in pages if p.slug not in MAIN_NAV and p.slug != "privacy"]
+    footer_nav = " · ".join(f'<a href="{base}/{slug}/">{escape(titles[slug])}</a>' for slug in footer_slugs)
     has_privacy = any(p.slug == "privacy" for p in pages)
+    site_url = site.get("site_url", "").rstrip("/")
+    threads_url = site.get("threads_url", "")
     common = {
         "base": base,
         "nav": nav,
         "footer_links": f'<a href="{base}/privacy/">개인정보 처리방침</a> · ' if has_privacy else "",
+        "footer_nav": footer_nav,
+        "header_follow": f'<a class="follow" href="{escape(threads_url)}" rel="noopener">스레드 팔로우</a>' if threads_url else "",
         "site_title": site["title"],
         "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og.jpg",
         "tagline": site.get("tagline", ""),
@@ -157,15 +210,22 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "roadmap_section": roadmap_section(data["roadmap"]),
         "support_section": support_section(data["support"], direct=is_direct(site), ctee=shows_ctee(site)),
         "ai_table": ai_table(data["ai"]),
-        "logo": f'<img class="logo-img" src="{base}/static/art/logo-cream-1600.png" alt="탐라" width="1600" height="912">',
-        "brand": f'<img src="{base}/static/art/logo-cream-400.png" alt="탐라" width="400" height="228">',
+        "logo": f'<img class="logo-img" src="{base}/static/art/logo-cream-900.webp" alt="탐라" width="900" height="513">',
+        "brand": f'<img src="{base}/static/art/logo-cream-120.webp" alt="탐라" width="120" height="68">',
     }
     for name in ("sun", "brush", "moon", "peony", "hareubang", "bell", "letter", "road", "knot", "cups", "pouch", "magpie"):
         common[f"icon_{name}"] = _icon(base, name)
 
-    def page_html(title: str, content: str, page_title: str = "") -> str:
+    def page_html(title: str, content: str, page_title: str = "", *, path: str = "", description: str = "", image: str = "", og_type: str = "website", published: str = "") -> str:
         page_title = page_title or f"{title} · {site['title']}"
-        return render_template("base.html", {**common, "title": title, "page_title": page_title, "content": content}, templates)
+        meta = {
+            "description": escape(_clip(description or site.get("tagline", ""))),
+            "canonical": f"{site_url}/{path}",
+            "og_type": og_type,
+            "og_image": f"{site_url}/{image}" if image else common["og_image"],
+            "published_meta": f'<meta property="article:published_time" content="{escape(published)}">' if published else "",
+        }
+        return render_template("base.html", {**common, **meta, "title": title, "page_title": page_title, "content": content}, templates)
 
     if out.exists():
         shutil.rmtree(out)
@@ -181,6 +241,9 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "now_items": _li(latest.next_items if latest else []),
         "latest_logs": "".join(_log_link(base, log) for log in logs[:5]) or "<li>아직 없습니다</li>",
         "latest_monthly": _monthly_link(base, monthly[0]) if monthly else "<li>아직 없습니다</li>",
+        "play": _play_html(base, site),
+        "hero_cta": (f'<a class="btn" href="{base}/together/">같이 사냥할 명단 올리기</a>' if any(p.slug == "together" for p in pages)
+                     else f'<a class="btn" href="{base}/log/">작업 기록</a>'),
     }
     _write(out / "index.html", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"]))
 
@@ -189,12 +252,15 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         media = "".join(_media_html(base, m) for m in log.media)
         body = md_to_html(log.body_md)
         content = render_template("log.html", {**common, "date": log.date, "title": log.title, "media": media, "body": body}, templates)
-        _write(out / "log" / log.date / "index.html", page_html(f"{log.date} {log.title}", content))
+        image = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "")
+        _write(out / "log" / log.date / "index.html",
+               page_html(f"{log.date} {log.title}", content, path=f"log/{log.date}/", description=_plain(_excerpt(log)), image=image, og_type="article", published=log.date))
     by_month: dict[str, list[str]] = {}
     for log in logs:
         by_month.setdefault(log.date[:7], []).append(_log_link(base, log))
     groups = "".join(f"<h2>{m}</h2><ul>{''.join(links)}</ul>" for m, links in by_month.items()) or "<p>아직 없습니다.</p>"
-    _write(out / "log" / "index.html", page_html("작업 기록", render_template("log_index.html", {**common, "groups": groups}, templates)))
+    _write(out / "log" / "index.html", page_html("작업 기록", render_template("log_index.html", {**common, "groups": groups}, templates), path="log/",
+                                                 description="날마다 자동으로 올라오는 개발 기록. 무엇을 했고, 어디서 막혔고, 다음에 무엇을 볼지 적습니다. 약속이 아닙니다."))
 
     # 이달의 정리
     for m in monthly:
@@ -203,18 +269,18 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             {**common, "month": m.month, "title": m.title, "summary_en": m.summary_en, "body": md_to_html(m.body_md)},
             templates,
         )
-        _write(out / "monthly" / m.month / "index.html", page_html(m.title, content))
+        _write(out / "monthly" / m.month / "index.html", page_html(m.title, content, path=f"monthly/{m.month}/", description=_first_paragraph(m.body_md), og_type="article"))
     items = "".join(_monthly_link(base, m) for m in monthly) or "<li>아직 없습니다</li>"
-    _write(out / "monthly" / "index.html", page_html("이달의 정리", render_template("monthly_index.html", {**common, "items": items}, templates)))
+    _write(out / "monthly" / "index.html", page_html("이달의 정리", render_template("monthly_index.html", {**common, "items": items}, templates), path="monthly/",
+                                                     description="한 달 동안의 개발을 사람이 읽고 정리한 글. 받은 의견에 대한 답도 여기에 적습니다."))
 
     # 페이지
     for page in pages:
         body = md_to_html(fill(page.body_md, common))
         content = render_template("page.html", {**common, "title": page.title, "body": body, "page_icon": _icon(base, PAGE_ICONS.get(page.slug, ""))}, templates)
-        _write(out / page.slug / "index.html", page_html(page.title, content))
+        _write(out / page.slug / "index.html", page_html(page.title, content, path=f"{page.slug}/", description=_first_paragraph(fill(page.body_md, common))))
 
     # RSS
-    site_url = site.get("site_url", "").rstrip("/")
     feed_items = [
         FeedItem(f"기록 {log.date}: {log.title}", f"{site_url}/log/{log.date}/", log.date, " ".join(bullet_items(extract_section(log.body_md, "한 일"))))
         for log in logs

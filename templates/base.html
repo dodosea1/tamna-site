@@ -4,11 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{page_title}}</title>
-<meta name="description" content="{{tagline}}">
+<meta name="description" content="{{description}}">
+<link rel="canonical" href="{{canonical}}">
 {{verify_meta}}
-<meta property="og:type" content="website">
+{{published_meta}}
+<meta property="og:type" content="{{og_type}}">
+<meta property="og:url" content="{{canonical}}">
+<meta property="og:site_name" content="{{site_title}}">
+<meta property="og:locale" content="ko_KR">
 <meta property="og:title" content="{{page_title}}">
-<meta property="og:description" content="{{tagline}}">
+<meta property="og:description" content="{{description}}">
 <meta property="og:image" content="{{og_image}}">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" type="image/png" href="{{base}}/static/favicon.png">
@@ -19,12 +24,11 @@
 <header class="site-header">
   <div class="wrap">
     <a class="brand" href="{{base}}/">{{brand}}</a>
-    <button class="menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">메뉴</button>
     <nav class="site-nav" id="site-nav">
-      <a href="{{base}}/log/"><img class="nico" src="{{base}}/static/icons/brush.png" alt="">작업 기록</a>
-      <a href="{{base}}/monthly/"><img class="nico" src="{{base}}/static/icons/moon.png" alt="">이달의 정리</a>
       {{nav}}
     </nav>
+    {{header_follow}}
+    <button class="menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">메뉴</button>
   </div>
 </header>
 <main>
@@ -32,6 +36,7 @@
 </main>
 <footer class="site-footer">
   <div class="wrap">
+    <p class="footer-nav">{{footer_nav}}</p>
     <p>{{site_title}} · {{year}} · {{footer_links}}<a href="{{base}}/feed.xml">RSS</a></p>
     <p class="attribution">사이트의 그림과 화면은 개발 중인 게임의 것이며 바뀔 수 있습니다.</p>
   </div>
@@ -55,6 +60,14 @@ if (toggle && nav) {
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     toggle.textContent = open ? '닫기' : '메뉴';
   });
+}
+document.querySelectorAll('.play-video').forEach(function (v) {
+  function toggle() { if (v.paused) { v.play(); } else { v.pause(); } }
+  v.addEventListener('click', toggle);
+  v.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+});
+if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  document.querySelectorAll('video[autoplay]').forEach(function (v) { v.removeAttribute('autoplay'); v.pause(); v.controls = true; });
 }
 var header = document.querySelector('.site-header');
 function onScroll() { header.classList.toggle('scrolled', window.scrollY > 40); }

@@ -100,11 +100,55 @@ class IconTest(unittest.TestCase):
 
     def test_pages_sections_nav_and_hero_carry_minhwa_icons_and_logo(self):
         about = (self.out / "about/index.html").read_text(encoding="utf-8")
-        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/hareubang.png" alt="">', about)
+        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/hareubang.webp" alt="">', about)
         index = (self.out / "index.html").read_text(encoding="utf-8")
-        self.assertIn('<p class="eyebrow"><img class="ico" src="/tamna-site/static/icons/sun.png" alt="">지금 하는 일', index)
-        self.assertIn('<img class="logo-img" src="/tamna-site/static/art/logo-cream-1600.png" alt="탐라"', index)
-        self.assertIn('<a class="brand" href="/tamna-site/"><img src="/tamna-site/static/art/logo-cream-400.png" alt="탐라"', index)
-        self.assertIn('<a href="/tamna-site/about/"><img class="nico" src="/tamna-site/static/icons/hareubang.png" alt="">만드는 사람과 AI</a>', index)
+        self.assertIn('<p class="eyebrow"><img class="ico" src="/tamna-site/static/icons/sun.webp" alt="">지금 게임 화면', index)
+        self.assertIn('<img class="logo-img" src="/tamna-site/static/art/logo-cream-900.webp" alt="탐라"', index)
+        self.assertIn('<a class="brand" href="/tamna-site/"><img src="/tamna-site/static/art/logo-cream-120.webp" alt="탐라"', index)
+        self.assertIn('<a href="/tamna-site/game/"><img class="nico" src="/tamna-site/static/icons/peony.webp" alt="">게임</a>', index)
+        self.assertIn('<p class="footer-nav"><a href="/tamna-site/monthly/">이달의 정리</a> · <a href="/tamna-site/about/">만드는 사람과 AI</a></p>', index)
         log_index = (self.out / "log/index.html").read_text(encoding="utf-8")
-        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/brush.png" alt="">작업 기록</h1>', log_index)
+        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/brush.webp" alt="">작업 기록</h1>', log_index)
+
+
+class SharePreviewAndHomeTest(unittest.TestCase):
+    """2026-11-13 1단계: 위 메뉴 5곳, 글마다 공유 미리보기, 홈의 실제 게임 화면."""
+
+    def build(self, edit=None):
+        import json, shutil
+        tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "root"; shutil.copytree(FX, root)
+        if edit:
+            site = json.loads((root / "data/site.json").read_text(encoding="utf-8")); edit(site)
+            (root / "data/site.json").write_text(json.dumps(site, ensure_ascii=False), encoding="utf-8")
+        out = Path(tmp.name) / "out"; build_site(root, out, base="/tamna-site")
+        return out
+
+    def test_log_pages_carry_their_own_description_url_and_image(self):
+        out = self.build()
+        html = (out / "log/2026-11-07/index.html").read_text(encoding="utf-8")
+        self.assertIn('<meta name="description" content="사례 7개 범위를 조사했다.">', html)
+        self.assertIn('<meta property="og:type" content="article">', html)
+        self.assertIn('<link rel="canonical" href="https://example.github.io/tamna-site/log/2026-11-07/">', html)
+        self.assertIn('<meta property="og:url" content="https://example.github.io/tamna-site/log/2026-11-07/">', html)
+        self.assertIn('<meta property="article:published_time" content="2026-11-07">', html)
+        # GIF는 수 MB라 미리보기 그림으로 쓰지 않는다.
+        self.assertIn('<meta property="og:image" content="https://example.github.io/tamna-site/static/art/og.jpg">', html)
+
+    def test_pages_without_media_fall_back_to_site_image_and_first_paragraph(self):
+        out = self.build()
+        html = (out / "game/index.html").read_text(encoding="utf-8")
+        self.assertIn('content="https://example.github.io/tamna-site/static/art/og.jpg"', html)
+        self.assertIn('<meta name="description" content="제주 신화 섬에서 네 직업이 파티로 사냥하는 온라인 RPG.">', html)
+
+    def test_header_follow_button_only_when_threads_url_set(self):
+        self.assertNotIn('class="follow"', (self.build() / "index.html").read_text(encoding="utf-8"))
+        out = self.build(lambda s: s.update(threads_url="https://www.threads.com/@x"))
+        self.assertIn('<a class="follow" href="https://www.threads.com/@x" rel="noopener">스레드 팔로우</a>', (out / "index.html").read_text(encoding="utf-8"))
+
+    def test_home_play_clip_is_muted_looping_and_labelled(self):
+        self.assertNotIn('class="play"', (self.build() / "index.html").read_text(encoding="utf-8"))
+        out = self.build(lambda s: s.update(play_media="media/clip.mp4", play_label="실제 게임 화면(개발 중)"))
+        html = (out / "index.html").read_text(encoding="utf-8")
+        self.assertIn('<video class="play-video" src="/tamna-site/media/clip.mp4" autoplay muted loop playsinline', html)
+        self.assertIn("<figcaption>실제 게임 화면(개발 중)</figcaption>", html)
