@@ -132,6 +132,9 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         self.assertIn('<link rel="canonical" href="https://example.github.io/tamna-site/log/2026-11-07/">', html)
         self.assertIn('<meta property="og:url" content="https://example.github.io/tamna-site/log/2026-11-07/">', html)
         self.assertIn('<meta property="article:published_time" content="2026-11-07">', html)
+        import json as _json
+        ld = _json.loads(html.split('<script type="application/ld+json">')[1].split("</script>")[0])
+        self.assertEqual((ld["@type"], ld["datePublished"], ld["url"]), ("Article", "2026-11-07", "https://example.github.io/tamna-site/log/2026-11-07/"))
         # GIF는 수 MB라 미리보기 그림으로 쓰지 않는다.
         self.assertIn('<meta property="og:image" content="https://example.github.io/tamna-site/static/art/og.jpg">', html)
 

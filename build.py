@@ -105,6 +105,22 @@ def _band_html(base: str, path: str) -> str:
     return f'<div class="page-band" style="background-image:url(\'{base}/static/art/{art}-1400.webp\');background-position:center {BAND_FOCUS.get(art, "40%")}" aria-hidden="true"></div>\n'
 
 
+def _article_ld(title: str, published: str, url: str, image: str, site: dict) -> str:
+    """기록 글의 구조화 데이터(schema.org Article). 검색엔진이 날짜·제목·작성자를 읽게 한다."""
+    data = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": title,
+        "datePublished": published,
+        "url": url,
+        "image": image,
+        "author": {"@type": "Person", "name": site.get("author", "")},
+        "inLanguage": "ko",
+    }
+    text = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
+    return f'<script type="application/ld+json">{text}</script>'
+
+
 PAGE_ICONS = {"about": "hareubang", "game": "peony", "roadmap": "road", "feedback": "letter", "help-wanted": "knot", "together": "cups", "support": "pouch"}
 
 
@@ -233,12 +249,13 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
 
     def page_html(title: str, content: str, page_title: str = "", *, path: str = "", description: str = "", image: str = "", og_type: str = "website", published: str = "") -> str:
         page_title = page_title or f"{title} · {site['title']}"
+        og_image = f"{site_url}/{image}" if image else common["og_image"]
         meta = {
             "description": escape(_clip(description or site.get("tagline", ""))),
             "canonical": f"{site_url}/{path}",
             "og_type": og_type,
-            "og_image": f"{site_url}/{image}" if image else common["og_image"],
-            "published_meta": f'<meta property="article:published_time" content="{escape(published)}">' if published else "",
+            "og_image": og_image,
+            "published_meta": (f'<meta property="article:published_time" content="{escape(published)}">\n' + _article_ld(title, published, f"{site_url}/{path}", og_image, site)) if published else "",
             "band": _band_html(base, path),
         }
         return render_template("base.html", {**common, **meta, "title": title, "page_title": page_title, "content": content}, templates)
