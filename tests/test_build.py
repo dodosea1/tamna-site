@@ -152,3 +152,16 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         html = (out / "index.html").read_text(encoding="utf-8")
         self.assertIn('<video class="play-video" src="/tamna-site/media/clip.mp4" autoplay muted loop playsinline', html)
         self.assertIn("<figcaption>실제 게임 화면(개발 중)</figcaption>", html)
+
+    def test_sub_pages_get_an_art_band_and_home_does_not(self):
+        out = self.build()
+        self.assertNotIn('class="page-band"', (out / "index.html").read_text(encoding="utf-8"))
+        game = (out / "game/index.html").read_text(encoding="utf-8")
+        self.assertIn("static/art/scene-hunt-1400.webp", game)
+        log = (out / "log/2026-11-07/index.html").read_text(encoding="utf-8")
+        self.assertIn("static/art/key-sea-1400.webp", log)
+        self.assertIn('aria-hidden="true"', log)
+        # 그림 띠가 가리키는 파일이 실제로 있어야 한다.
+        for html in (game, log):
+            src = html.split("background-image:url('/tamna-site/")[1].split("'")[0]
+            self.assertTrue((out / src).exists(), src)

@@ -129,6 +129,12 @@ section.wrap { padding: 72px 24px; }
 .job h3 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 6px; }
 .job p { margin: 0; color: var(--muted); font-size: 0.93rem; }
 
+/* sub-page art band: the header floats over it, the title sits just below */
+.page-band { position: relative; height: 260px; background-size: cover; background-position: center 40%; }
+.page-band::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(20, 19, 43, 0.7) 0%, rgba(20, 19, 43, 0.25) 35%, rgba(20, 19, 43, 0.3) 60%, var(--bg) 100%); }
+.page-band + .wrap .article { padding-top: 0; margin-top: -36px; position: relative; }
+@media (max-width: 720px) { .page-band { height: 170px; } .page-band + .wrap .article { margin-top: -20px; } }
+
 /* articles */
 .article { padding-top: 110px; padding-bottom: 20px; }
 .article h1 { font-size: clamp(1.9rem, 3vw, 2.6rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.2; margin: 0 0 18px; }

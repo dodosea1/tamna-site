@@ -90,6 +90,21 @@ def _play_html(base: str, site: dict) -> str:
     return f'<figure class="play">{tag}<figcaption>{label}</figcaption></figure>'
 
 
+# 하위 페이지 머리 그림 띠. 페이지 성격에 맞는 그림을 고르고, 없으면 키아트.
+PAGE_BANDS = {"game": "scene-hunt", "together": "scene-village", "about": "scene-village", "log": "key-sea", "monthly": "key-sea"}
+DEFAULT_BAND = "key-hero"
+# 그림마다 띠에 보일 부분(세로 위치). 하늘만 보이지 않게 아래쪽 풍경을 잡는다.
+BAND_FOCUS = {"scene-hunt": "40%", "scene-village": "35%", "key-sea": "88%", "key-hero": "68%"}
+
+
+def _band_html(base: str, path: str) -> str:
+    section = path.split("/", 1)[0]
+    if not section:
+        return ""
+    art = PAGE_BANDS.get(section, DEFAULT_BAND)
+    return f'<div class="page-band" style="background-image:url(\'{base}/static/art/{art}-1400.webp\');background-position:center {BAND_FOCUS.get(art, "40%")}" aria-hidden="true"></div>\n'
+
+
 PAGE_ICONS = {"about": "hareubang", "game": "peony", "roadmap": "road", "feedback": "letter", "help-wanted": "knot", "together": "cups", "support": "pouch"}
 
 
@@ -224,6 +239,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             "og_type": og_type,
             "og_image": f"{site_url}/{image}" if image else common["og_image"],
             "published_meta": f'<meta property="article:published_time" content="{escape(published)}">' if published else "",
+            "band": _band_html(base, path),
         }
         return render_template("base.html", {**common, **meta, "title": title, "page_title": page_title, "content": content}, templates)
 
