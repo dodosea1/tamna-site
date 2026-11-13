@@ -142,6 +142,14 @@ def _hero_html(base: str, site: dict) -> str:
     return html
 
 
+def _analytics(site: dict) -> str:
+    """방문 집계(GoatCounter). 쿠키를 쓰지 않는다. 코드 이름은 영문 소문자·숫자·-만 받는다."""
+    code = str(site.get("goatcounter_code", ""))
+    if not code or not all(c.isascii() and (c.islower() or c.isdigit() or c == "-") for c in code):
+        return ""
+    return f'<script data-goatcounter="https://{code}.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>'
+
+
 VERIFY_NAMES = ("google-site-verification", "naver-site-verification")
 
 
@@ -228,6 +236,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og.jpg",
         "tagline": site.get("tagline", ""),
         "verify_meta": _verify_meta(site),
+        "analytics": _analytics(site),
         "author": site.get("author", ""),
         "inspiration": site.get("inspiration", ""),
         "summary_en": site.get("summary_en", ""),

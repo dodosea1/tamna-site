@@ -168,3 +168,10 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         for html in (game, log):
             src = html.split("background-image:url('/tamna-site/")[1].split("'")[0]
             self.assertTrue((out / src).exists(), src)
+
+    def test_analytics_tag_only_with_a_valid_code(self):
+        self.assertNotIn("goatcounter", (self.build() / "index.html").read_text(encoding="utf-8"))
+        out = self.build(lambda s: s.update(goatcounter_code="tamna"))
+        self.assertIn('<script data-goatcounter="https://tamna.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>', (out / "game/index.html").read_text(encoding="utf-8"))
+        bad = self.build(lambda s: s.update(goatcounter_code='x" onload="alert(1)'))
+        self.assertNotIn("goatcounter", (bad / "index.html").read_text(encoding="utf-8"))
