@@ -18,10 +18,12 @@ class ContentTest(unittest.TestCase):
 
     def test_load_logs_sorted_newest_first_with_next_items(self):
         logs = load_logs(FX / "log")
-        self.assertEqual([log.date for log in logs], ["2026-11-07", "2026-11-06"])
+        self.assertEqual([(log.game, log.date) for log in logs], [("tamna", "2026-11-07"), ("curvy", "2026-11-07"), ("tamna", "2026-11-06")])
         self.assertEqual(logs[0].next_items, ["사이트 생성기 뼈대."])
         self.assertEqual(logs[0].media, ["media/log/2026-11-07-hunter-sweep.gif"])
-        self.assertEqual(logs[1].media, [])
+        self.assertEqual(logs[2].media, [])
+        # 옛 자리(content/log/*.md)는 탐라 기록이고 옛 주소 넘김 대상이다. 게임 폴더 기록은 아니다.
+        self.assertEqual([(log.legacy, log.path) for log in logs[:2]], [(True, "log/tamna/2026-11-07/"), (False, "log/curvy/2026-11-07/")])
 
     def test_load_logs_requires_three_sections(self):
         with tempfile.TemporaryDirectory() as d:
@@ -55,7 +57,7 @@ class ContentTest(unittest.TestCase):
 
     def test_load_pages_sorted_by_order(self):
         pages = load_pages(FX / "pages")
-        self.assertEqual([p.slug for p in pages], ["about", "game", "feedback"])
+        self.assertEqual([p.slug for p in pages], ["about", "feedback"])
         self.assertEqual(pages[0].title, "만드는 사람과 AI")
 
     def test_load_monthly_newest_first(self):

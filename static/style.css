@@ -196,3 +196,33 @@ button.button { border: 0; cursor: pointer; font: inherit; font-weight: 700; }
 button.button:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
 .donate-ctee { flex: 1 1 100%; }
 .donate-ctee p { margin: 0; }
+/* ORN Studio (2026-11-20 개편): 글자 로고, 스튜디오 첫 화면, 게임 카드, 기록 고르기 */
+.brand-text { display: inline-flex; align-items: baseline; gap: 0.45em; font-family: "Space Grotesk", var(--font); font-weight: 800; font-size: 1.45rem; letter-spacing: -0.02em; line-height: 1; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.brand-dot { display: inline-block; width: 0.22em; height: 0.22em; border-radius: 50%; background: var(--accent); margin-left: -0.38em; }
+.brand-sub { font-size: 0.42em; font-weight: 600; letter-spacing: 0.32em; opacity: 0.78; }
+.studio-hero { padding-top: 132px !important; padding-bottom: 8px !important; }
+.studio-hero h1 { font-size: clamp(1.8rem, 4.4vw, 2.8rem); line-height: 1.25; margin: 0 0 12px; }
+.studio-hero .lead { color: var(--muted); max-width: 640px; margin: 0 0 22px; }
+.studio-hero .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; }
+.studio-hero + .wrap { padding-top: 40px; }
+.game-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 10px; }
+.game-card { display: flex; flex-direction: column; background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; color: var(--text); text-decoration: none; }
+.game-card:hover { border-color: rgba(227, 178, 79, 0.6); }
+.game-card .pic { aspect-ratio: 16 / 10; background: #26244a; display: flex; align-items: center; justify-content: center; }
+.game-card .pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pic-empty { color: var(--muted); font-size: 0.85rem; }
+.game-card .body { padding: 14px 16px 16px; }
+.game-card h3 { margin: 0 0 4px; font-size: 1.15rem; }
+.game-card p { margin: 0 0 10px; color: var(--muted); font-size: 0.92rem; line-height: 1.55; }
+.game-card p.tags { margin: 0; }
+.tag { display: inline-block; font-size: 0.78rem; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); margin: 0 4px 4px 0; }
+.tag.dev { border-color: var(--accent); color: var(--accent); }
+.tag.live { border-color: #7fc49b; color: #7fc49b; }
+.tag.rest { opacity: 0.7; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 18px; }
+.filters a { font-size: 0.88rem; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); text-decoration: none; }
+.filters a.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.log-list .g, .log-groups .g { display: inline-block; font-size: 0.75rem; color: var(--accent); font-weight: 600; border: 1px solid rgba(227, 178, 79, 0.5); border-radius: 999px; padding: 0 7px; margin-right: 7px; vertical-align: 2px; }
+.box { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
+.box h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.box p { color: var(--muted); font-size: 0.92rem; margin: 0 0 10px; }

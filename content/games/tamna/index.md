@@ -1,6 +1,7 @@
 ---
-title: 게임
-order: 2
+title: 탐라(가제)
+slug: index
+order: 0
 ---
 ## 세계
 

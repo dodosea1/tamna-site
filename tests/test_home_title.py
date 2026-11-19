@@ -43,7 +43,7 @@ class HomeTitleTest(unittest.TestCase):
 
     def test_other_pages_keep_page_then_site_title(self):
         site_title = self.build("탐라 · 제주 신화 RPG 개발 기록")
-        log = next((self.out / "log").glob("*/index.html"))
+        log = next((self.out / "log" / "tamna").glob("*/index.html"))
         self.assertIn(f" · {site_title}</title>", log.read_text(encoding="utf-8"))
 
 

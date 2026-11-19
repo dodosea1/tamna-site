@@ -1,0 +1,5 @@
+{
+  "game/": "games/tamna/",
+  "together/": "games/tamna/together/",
+  "roadmap/": "games/tamna/roadmap/"
+}

@@ -24,6 +24,8 @@ class SitemapTest(unittest.TestCase):
     def test_every_html_page_is_listed_exactly_once(self):
         expected = set()
         for f in self.out.rglob("index.html"):
+            if 'http-equiv="refresh"' in f.read_text(encoding="utf-8"):
+                continue  # 옛 주소 넘김 쪽은 사이트맵에 넣지 않는다.
             rel = f.parent.relative_to(self.out).as_posix()
             expected.add(self.site_url + "/" + ("" if rel == "." else rel + "/"))
         self.assertEqual(set(self.urls), expected)
@@ -36,7 +38,7 @@ class SitemapTest(unittest.TestCase):
     def test_log_pages_carry_their_date(self):
         root = ET.parse(self.out / "sitemap.xml").getroot()
         dated = {u.find(f"{NS}loc").text: u.find(f"{NS}lastmod") for u in root.iter(f"{NS}url")}
-        entry = dated[self.site_url + "/log/2026-11-07/"]
+        entry = dated[self.site_url + "/log/tamna/2026-11-07/"]
         self.assertEqual(entry.text, "2026-11-07")
 
 

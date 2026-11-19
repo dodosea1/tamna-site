@@ -1,4 +1,4 @@
-"""정적 사이트 생성기.
+"""ORN Studio 정적 사이트 생성기. 스튜디오 첫 화면, 게임별 페이지, 게임별·전체 개발 기록, 옛 주소 넘김 쪽.
 
 사용: python build.py [--root .] [--out _site] [--base /tamna-site]
 """
@@ -47,8 +47,10 @@ def _media_html(base: str, path: str, label: str = "") -> str:
 
 
 # 위쪽 메뉴에 두는 다섯 곳. 나머지 페이지는 아래쪽(푸터)으로 간다.
-MAIN_NAV = ("game", "log", "together", "feedback", "support")
-NAV_LABELS = {"log": "작업 기록", "monthly": "이달의 정리"}
+MAIN_NAV = ("games", "log", "feedback", "support", "about")
+NAV_LABELS = {"games": "게임", "log": "개발 기록", "monthly": "이달의 정리"}
+# 게임 상태 표시. games.json의 status 값이 이 중 하나여야 한다.
+GAME_STATUS = {"개발 중": "dev", "운영 중": "live", "쉬는 중": "rest"}
 # 공유 미리보기 그림. GIF는 수 MB라 미리보기에서 잘리거나 실패해 빼고, 없으면 기본 og.jpg를 쓴다.
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -91,17 +93,17 @@ def _play_html(base: str, site: dict) -> str:
 
 
 # 하위 페이지 머리 그림 띠. 페이지 성격에 맞는 그림을 고르고, 없으면 키아트.
-PAGE_BANDS = {"game": "scene-hunt", "together": "scene-village", "about": "scene-village", "log": "key-sea", "monthly": "key-sea"}
-DEFAULT_BAND = "key-hero"
+# 스튜디오 공통 페이지는 띠를 두지 않는다(탐라 그림이라). 탐라 페이지와 탐라 기록에만 둔다.
+PAGE_BANDS = {"games/tamna/together": "scene-village", "games/tamna/roadmap": "scene-village", "log/tamna": "key-sea"}
 # 그림마다 띠에 보일 부분(세로 위치). 하늘만 보이지 않게 아래쪽 풍경을 잡는다.
 BAND_FOCUS = {"scene-hunt": "40%", "scene-village": "35%", "key-sea": "88%", "key-hero": "68%"}
 
 
 def _band_html(base: str, path: str) -> str:
-    section = path.split("/", 1)[0]
-    if not section:
+    key = path.strip("/")
+    art = PAGE_BANDS.get(key) or (PAGE_BANDS["log/tamna"] if key.startswith("log/tamna/") else "")
+    if not art:
         return ""
-    art = PAGE_BANDS.get(section, DEFAULT_BAND)
     return f'<div class="page-band" style="background-image:url(\'{base}/static/art/{art}-1400.webp\');background-position:center {BAND_FOCUS.get(art, "40%")}" aria-hidden="true"></div>\n'
 
 
@@ -114,7 +116,7 @@ def _article_ld(title: str, published: str, url: str, image: str, site: dict) ->
         "datePublished": published,
         "url": url,
         "image": image,
-        "author": {"@type": "Person", "name": site.get("author", "")},
+        "author": {"@type": "Organization", "name": site.get("author", "")},
         "inLanguage": "ko",
     }
     text = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
@@ -181,9 +183,41 @@ def _excerpt(log: LogEntry) -> str:
     return items[0] if items else ""
 
 
-def _log_link(base: str, log: LogEntry) -> str:
-    return (f'<li><a href="{base}/log/{log.date}/"><span class="d">{escape(log.date)}</span>'
-            f'<span class="t">{escape(log.title)}</span><span class="x">{escape(_excerpt(log))}</span></a></li>')
+def _log_link(base: str, log: LogEntry, game_names: dict[str, str] | None = None) -> str:
+    tag = f'<span class="g">{escape(game_names[log.game])}</span>' if game_names and log.game in game_names else ""
+    return (f'<li><a href="{base}/{log.path}"><span class="d">{escape(log.date)}</span>'
+            f'<span class="t">{tag}{escape(log.title)}</span><span class="x">{escape(_excerpt(log))}</span></a></li>')
+
+
+def _redirect_html(base: str, site_url: str, target: str) -> str:
+    """옛 주소에 남기는 넘김 쪽. GitHub Pages는 서버 넘김이 없어 meta refresh + canonical로 한다."""
+    url = f"{site_url}/{target}"
+    href = f"{base}/{target}"
+    return (
+        '<!doctype html>\n<html lang="ko"><head><meta charset="utf-8">'
+        f'<title>옮겼습니다</title><meta name="robots" content="noindex">'
+        f'<link rel="canonical" href="{escape(url)}">'
+        f'<meta http-equiv="refresh" content="0; url={escape(href)}">'
+        f'</head><body><p>이 페이지는 옮겼습니다: <a href="{escape(href)}">{escape(url)}</a></p></body></html>\n'
+    )
+
+
+def _game_card(base: str, g: dict) -> str:
+    """첫 화면·게임 목록의 게임 카드. 바깥 주소(url)가 있으면 그리로, 없으면 게임 페이지로."""
+    external = g.get("url", "")
+    href = escape(external) if external else f"{base}/games/{g['slug']}/"
+    rel = ' rel="noopener"' if external else ""
+    img = g.get("card_image", "")
+    pic = (f'<img src="{base}/{escape(img)}" alt="" loading="lazy">' if img
+           else '<span class="pic-empty">그림 준비 중</span>')
+    status = g.get("status", "개발 중")
+    tags = f'<span class="tag {GAME_STATUS.get(status, "dev")}">{escape(status)}</span>'
+    if g.get("platform"):
+        tags += f'<span class="tag">{escape(g["platform"])}</span>'
+    if external:
+        tags += f'<span class="tag">{escape(external.split("//", 1)[-1].rstrip("/"))} ↗</span>'
+    return (f'<a class="game-card" href="{href}"{rel}><div class="pic">{pic}</div>'
+            f'<div class="body"><h3>{escape(g["name"])}</h3><p>{escape(g.get("summary", ""))}</p><p class="tags">{tags}</p></div></a>')
 
 
 def _monthly_link(base: str, m: Monthly) -> str:
@@ -196,6 +230,31 @@ def _guard_out(root: Path, out: Path) -> None:
         raise ValueError(f"출력 폴더가 저장소 자체이거나 그 상위 폴더입니다: {out_r}")
     if out_r.exists() and any(out_r.iterdir()) and not (out_r / ".nojekyll").exists():
         raise ValueError(f"출력 폴더가 비어 있지 않고 생성기 출력(.nojekyll)도 아닙니다: {out_r}")
+
+
+def _load_games(root: Path) -> list[dict]:
+    games = _load_json(root / "data" / "games.json")
+    slugs = set()
+    for g in games:
+        for key in ("slug", "name"):
+            if not g.get(key):
+                raise ValueError(f"data/games.json: 게임마다 {key}가 필요합니다: {g}")
+        if g["slug"] in slugs:
+            raise ValueError(f"data/games.json: slug가 겹칩니다: {g['slug']}")
+        if g.get("status", "개발 중") not in GAME_STATUS:
+            raise ValueError(f"data/games.json: status는 {', '.join(GAME_STATUS)} 중 하나: {g['slug']}")
+        slugs.add(g["slug"])
+    return games
+
+
+def _log_filters(base: str, games: list[dict], logs: list[LogEntry], current: str) -> str:
+    """개발 기록 게임 고르기. 기록이 있는 게임만 링크."""
+    has = {log.game for log in logs}
+    items = [f'<a class="{"on" if not current else ""}" href="{base}/log/">전체</a>']
+    for g in games:
+        if g["slug"] in has:
+            items.append(f'<a class="{"on" if current == g["slug"] else ""}" href="{base}/log/{g["slug"]}/">{escape(g["name"])}</a>')
+    return '<nav class="filters">' + "".join(items) + "</nav>"
 
 
 def build_site(root: Path, out: Path, base: str | None = None) -> None:
@@ -213,19 +272,28 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     if not static.exists():
         static = Path(__file__).parent / "static"
 
+    games = _load_games(root)
+    game_by_slug = {g["slug"]: g for g in games}
+    game_names = {g["slug"]: g["name"] for g in games}
     logs = load_logs(root / "content" / "log")
+    for log in logs:
+        if log.game not in game_by_slug:
+            raise ValueError(f"기록 {log.game}/{log.date}: data/games.json에 없는 게임입니다")
     pages = load_pages(root / "content" / "pages")
+    game_pages = {g["slug"]: load_pages(root / "content" / "games" / g["slug"]) for g in games}
     monthly = load_monthly(root / "content" / "monthly")
     data = {name: _load_json(root / "data" / f"{name}.json") for name in ("feedback", "roadmap", "support", "ai")}
+    redirects_path = root / "data" / "redirects.json"
+    redirects = _load_json(redirects_path) if redirects_path.exists() else {}
 
     titles = {**{p.slug: p.title for p in pages}, **NAV_LABELS}
-    icons = {**PAGE_ICONS, "log": "brush", "monthly": "moon"}
-    nav = "".join(f'<a href="{base}/{slug}/">{_icon(base, icons.get(slug, ""), "nico")}{escape(titles[slug])}</a>' for slug in MAIN_NAV if slug in titles)
+    nav = "".join(f'<a href="{base}/{slug}/">{escape(titles[slug])}</a>' for slug in MAIN_NAV if slug in titles)
     footer_slugs = ["monthly"] + [p.slug for p in pages if p.slug not in MAIN_NAV and p.slug != "privacy"]
     footer_nav = " · ".join(f'<a href="{base}/{slug}/">{escape(titles[slug])}</a>' for slug in footer_slugs)
     has_privacy = any(p.slug == "privacy" for p in pages)
     site_url = site.get("site_url", "").rstrip("/")
     threads_url = site.get("threads_url", "")
+    tamna = game_by_slug.get("tamna", {})
     common = {
         "base": base,
         "nav": nav,
@@ -238,20 +306,23 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "verify_meta": _verify_meta(site),
         "analytics": _analytics(site),
         "author": site.get("author", ""),
-        "inspiration": site.get("inspiration", ""),
+        # 영감 문장은 게임마다 다르다. 공통 페이지의 {{inspiration}}은 탐라 문장이다.
+        "inspiration": tamna.get("inspiration", ""),
         "summary_en": site.get("summary_en", ""),
         "year": str(date.today().year),
         "email": _email_html(site.get("email_user", ""), site.get("email_domain", "")),
         "tally_feedback": _link_or_prep(site.get("tally_feedback_url", ""), "의견 보내기 폼 열기"),
-        "tally_tester": _link_or_prep(site.get("tally_tester_url", ""), "같이 사냥할 명단에 올리기"),
+        "tally_tester": _link_or_prep(tamna.get("tally_tester_url", ""), "같이 사냥할 명단에 올리기"),
         "donate": donate_block(site),
         "threads": _link_or_prep(site.get("threads_url", ""), "스레드에서 보기"),
         "feedback_table": feedback_table(data["feedback"]),
         "roadmap_section": roadmap_section(data["roadmap"]),
         "support_section": support_section(data["support"], direct=is_direct(site), ctee=shows_ctee(site)),
         "ai_table": ai_table(data["ai"]),
+        "latest_monthly": _monthly_link(base, monthly[0]) if monthly else "<li>아직 없습니다</li>",
         "logo": f'<img class="logo-img" src="{base}/static/art/logo-cream-900.webp" alt="탐라" width="900" height="513">',
-        "brand": f'<img src="{base}/static/art/logo-cream-120.webp" alt="탐라" width="120" height="68">',
+        "brand": (f'<span class="brand-text">{escape(site.get("brand_word", site["title"]))}<i class="brand-dot"></i>'
+                  f'<span class="brand-sub">{escape(site.get("brand_sub", ""))}</span></span>'),
     }
     for name in ("sun", "brush", "moon", "peony", "hareubang", "bell", "letter", "road", "knot", "cups", "pouch", "magpie"):
         common[f"icon_{name}"] = _icon(base, name)
@@ -272,37 +343,96 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
+    written: set[str] = set()
 
-    # 첫 화면
-    latest = logs[0] if logs else None
-    hero = _hero_html(base, site)
+    def write_page(path: str, html: str) -> None:
+        if path in written:
+            raise ValueError(f"같은 주소에 페이지가 두 번 쓰였습니다: /{path}")
+        written.add(path)
+        _write(out / path / "index.html", html)
+
+    cards = "".join(_game_card(base, g) for g in games)
+    has_tester = any(p.slug == "together" for p in game_pages.get("tamna", []))
+
+    # 스튜디오 첫 화면
     index_ctx = {
         **common,
-        "hero": hero,
-        "now_date": latest.date if latest else "",
-        "now_items": _li(latest.next_items if latest else []),
-        "latest_logs": "".join(_log_link(base, log) for log in logs[:5]) or "<li>아직 없습니다</li>",
-        "latest_monthly": _monthly_link(base, monthly[0]) if monthly else "<li>아직 없습니다</li>",
-        "play": _play_html(base, site),
-        "hero_cta": (f'<a class="btn" href="{base}/together/">같이 사냥할 명단 올리기</a>' if any(p.slug == "together" for p in pages)
-                     else f'<a class="btn" href="{base}/log/">작업 기록</a>'),
+        "cards": cards,
+        "latest_logs": "".join(_log_link(base, log, game_names) for log in logs[:6]) or "<li>아직 없습니다</li>",
+        "studio_boxes": "".join(box for slug, box in (
+            ("support", f'<div class="box"><p class="eyebrow">후원</p><h3>만드는 시간을 응원해 주세요</h3><p>모든 게임에 함께 쓰입니다. 받은 금액과 쓴 곳은 후원 페이지에 공개합니다.</p><a class="btn ghost small" href="{base}/support/">후원 방법 보기</a></div>'),
+            ("feedback", f'<div class="box"><p class="eyebrow">의견</p><p>어느 게임에 대한 의견인지 골라서 남길 수 있습니다.</p><a class="btn ghost small" href="{base}/feedback/">의견 보내기</a></div>'),
+        ) if slug in titles),
+        "hero_cta": (f'<a class="btn" href="{base}/games/tamna/together/">탐라 테스터 신청</a>' if has_tester
+                     else f'<a class="btn" href="{base}/games/">게임 보기</a>'),
     }
-    _write(out / "index.html", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"]))
+    write_page("", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"]))
 
-    # 작업 기록
+    # 게임 목록과 게임 페이지
+    write_page("games/", page_html("게임", render_template("games_index.html", {**common, "cards": cards}, templates), path="games/",
+                                   description=f"{site['title']}가 만드는 게임 목록. 개발 중인 게임과 운영 중인 프로젝트."))
+    for g in games:
+        if g.get("url"):
+            continue  # 바깥 사이트로 나가는 카드(고향 등)는 이 사이트에 페이지를 두지 않는다.
+        slug = g["slug"]
+        gfill = {**common, "inspiration": g.get("inspiration", "")}
+        subpages = game_pages.get(slug, [])
+        index_page = next((p for p in subpages if p.slug == "index"), None)
+        g_logs = [log for log in logs if log.game == slug]
+        latest = g_logs[0] if g_logs else None
+        ctx = {
+            **gfill,
+            "game_name": g["name"],
+            "game_summary": g.get("summary", ""),
+            "game_slug": slug,
+            "body": md_to_html(fill(index_page.body_md, gfill)) if index_page else '<p class="muted">소개 자료를 준비하고 있습니다.</p>',
+            "subnav": " · ".join(f'<a href="{base}/games/{slug}/{p.slug}/">{escape(p.title)}</a>' for p in subpages if p.slug != "index"),
+            "latest_logs": "".join(_log_link(base, log) for log in g_logs[:5]) or "<li>아직 기록이 없습니다</li>",
+            "log_more": f'<a class="more" href="{base}/log/{slug}/">{escape(g["name"])} 기록 전체</a>' if g_logs else "",
+            "now_date": latest.date if latest else "",
+            "now_items": _li(latest.next_items if latest else []),
+            "hero": _hero_html(base, g),
+            "play": _play_html(base, g),
+            "hero_cta": (f'<a class="btn" href="{base}/games/{slug}/together/">같이 사냥할 명단 올리기</a>' if any(p.slug == "together" for p in subpages)
+                         else (f'<a class="btn" href="{base}/log/{slug}/">개발 기록 보기</a>' if g_logs else "")),
+        }
+        tpl = f"game_{slug}.html" if (templates / f"game_{slug}.html").exists() else "game.html"
+        description = g.get("summary", "") or (_first_paragraph(index_page.body_md) if index_page else "")
+        write_page(f"games/{slug}/", page_html(g["name"], render_template(tpl, ctx, templates), path=f"games/{slug}/", description=description))
+        for p in subpages:
+            if p.slug == "index":
+                continue
+            body = md_to_html(fill(p.body_md, gfill))
+            content = render_template("page.html", {**gfill, "title": p.title, "body": body, "page_icon": _icon(base, PAGE_ICONS.get(p.slug, "")),
+                                                    "crumbs": f'<p class="crumbs"><a href="{base}/games/{slug}/">{escape(g["name"])}</a></p>'}, templates)
+            write_page(f"games/{slug}/{p.slug}/", page_html(f"{p.title} · {g['name']}", content, path=f"games/{slug}/{p.slug}/",
+                                                           description=_first_paragraph(fill(p.body_md, gfill))))
+
+    # 개발 기록: 글, 전체 목록, 게임별 목록
     for log in logs:
         media = "".join(_media_html(base, m) for m in log.media)
         body = md_to_html(log.body_md)
-        content = render_template("log.html", {**common, "date": log.date, "title": log.title, "media": media, "body": body}, templates)
+        content = render_template("log.html", {**common, "date": log.date, "title": log.title, "media": media, "body": body,
+                                               "game_name": game_names[log.game], "game_slug": log.game}, templates)
         image = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "")
-        _write(out / "log" / log.date / "index.html",
-               page_html(f"{log.date} {log.title}", content, path=f"log/{log.date}/", description=_plain(_excerpt(log)), image=image, og_type="article", published=log.date))
-    by_month: dict[str, list[str]] = {}
-    for log in logs:
-        by_month.setdefault(log.date[:7], []).append(_log_link(base, log))
-    groups = "".join(f"<h2>{m}</h2><ul>{''.join(links)}</ul>" for m, links in by_month.items()) or "<p>아직 없습니다.</p>"
-    _write(out / "log" / "index.html", page_html("작업 기록", render_template("log_index.html", {**common, "groups": groups}, templates), path="log/",
-                                                 description="날마다 자동으로 올라오는 개발 기록. 무엇을 했고, 어디서 막혔고, 다음에 무엇을 볼지 적습니다. 약속이 아닙니다."))
+        write_page(log.path, page_html(f"{log.date} {log.title}", content, path=log.path, description=_plain(_excerpt(log)), image=image, og_type="article", published=log.date))
+
+    def groups_html(items: list[LogEntry], show_game: bool) -> str:
+        by_month: dict[str, list[str]] = {}
+        for log in items:
+            by_month.setdefault(log.date[:7], []).append(_log_link(base, log, game_names if show_game else None))
+        return "".join(f"<h2>{m}</h2><ul>{''.join(links)}</ul>" for m, links in by_month.items()) or "<p>아직 없습니다.</p>"
+
+    write_page("log/", page_html("개발 기록", render_template("log_index.html", {**common, "heading": "개발 기록", "filters": _log_filters(base, games, logs, ""),
+                                                                              "groups": groups_html(logs, True)}, templates), path="log/",
+                                 description="게임별 개발 기록을 한곳에 모았습니다. 무엇을 했고, 어디서 막혔고, 다음에 무엇을 볼지 적습니다. 약속이 아닙니다."))
+    for g in games:
+        g_logs = [log for log in logs if log.game == g["slug"]]
+        if not g_logs:
+            continue
+        write_page(f"log/{g['slug']}/", page_html(f"{g['name']} 개발 기록", render_template("log_index.html", {
+            **common, "heading": f"{g['name']} 개발 기록", "filters": _log_filters(base, games, logs, g["slug"]), "groups": groups_html(g_logs, False)}, templates),
+            path=f"log/{g['slug']}/", description=f"{g['name']} 개발 기록. 무엇을 했고, 어디서 막혔고, 다음에 무엇을 볼지 적습니다. 약속이 아닙니다."))
 
     # 이달의 정리
     for m in monthly:
@@ -311,32 +441,40 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             {**common, "month": m.month, "title": m.title, "summary_en": m.summary_en, "body": md_to_html(m.body_md)},
             templates,
         )
-        _write(out / "monthly" / m.month / "index.html", page_html(m.title, content, path=f"monthly/{m.month}/", description=_first_paragraph(m.body_md), og_type="article"))
+        write_page(f"monthly/{m.month}/", page_html(m.title, content, path=f"monthly/{m.month}/", description=_first_paragraph(m.body_md), og_type="article"))
     items = "".join(_monthly_link(base, m) for m in monthly) or "<li>아직 없습니다</li>"
-    _write(out / "monthly" / "index.html", page_html("이달의 정리", render_template("monthly_index.html", {**common, "items": items}, templates), path="monthly/",
-                                                     description="한 달 동안의 개발을 사람이 읽고 정리한 글. 받은 의견에 대한 답도 여기에 적습니다."))
+    write_page("monthly/", page_html("이달의 정리", render_template("monthly_index.html", {**common, "items": items}, templates), path="monthly/",
+                                     description="한 달 동안의 개발을 사람이 읽고 정리한 글. 받은 의견에 대한 답도 여기에 적습니다."))
 
-    # 페이지
+    # 스튜디오 공통 페이지
     for page in pages:
         body = md_to_html(fill(page.body_md, common))
-        content = render_template("page.html", {**common, "title": page.title, "body": body, "page_icon": _icon(base, PAGE_ICONS.get(page.slug, ""))}, templates)
-        _write(out / page.slug / "index.html", page_html(page.title, content, path=f"{page.slug}/", description=_first_paragraph(fill(page.body_md, common))))
+        content = render_template("page.html", {**common, "title": page.title, "body": body, "page_icon": _icon(base, PAGE_ICONS.get(page.slug, "")), "crumbs": ""}, templates)
+        write_page(f"{page.slug}/", page_html(page.title, content, path=f"{page.slug}/", description=_first_paragraph(fill(page.body_md, common))))
 
-    # RSS
+    # 옛 주소 넘김 쪽. 탐라 옛 기록(/log/<날짜>/)은 자동, 나머지는 data/redirects.json(옛 경로 → 새 경로).
+    stubs = {f"log/{log.date}/": log.path for log in logs if log.legacy}
+    stubs.update(redirects)
+    for old, new in stubs.items():
+        if old in written:
+            raise ValueError(f"넘김 쪽 /{old}가 실제 페이지와 겹칩니다")
+        if new not in written:
+            raise ValueError(f"넘김 쪽 /{old} → /{new}: 새 주소에 페이지가 없습니다")
+        _write(out / old / "index.html", _redirect_html(base, site_url, new))
+
+    # RSS: 전체 하나. 제목 앞에 게임 이름.
     feed_items = [
-        FeedItem(f"기록 {log.date}: {log.title}", f"{site_url}/log/{log.date}/", log.date, " ".join(bullet_items(extract_section(log.body_md, "한 일"))))
+        FeedItem(f"{game_names[log.game]} {log.date}: {log.title}", f"{site_url}/{log.path}", log.date, " ".join(bullet_items(extract_section(log.body_md, "한 일"))))
         for log in logs
     ] + [FeedItem(f"정리 {m.month}: {m.title}", f"{site_url}/monthly/{m.month}/", f"{m.month}-01", m.summary_en) for m in monthly]
     feed_items.sort(key=lambda i: i.date, reverse=True)
-    _write(out / "feed.xml", build_rss(feed_items, site["title"], site_url, "작업 기록과 이달의 정리"))
+    _write(out / "feed.xml", build_rss(feed_items, site["title"], site_url, "게임별 개발 기록과 이달의 정리"))
 
-    # 사이트맵: 쓴 HTML 페이지를 빠짐없이 싣는다. 기록과 월간 글은 날짜를 함께 적는다.
-    dated = {f"log/{log.date}/": log.date for log in logs}
+    # 사이트맵: 실제 페이지만(넘김 쪽 제외). 기록과 월간 글은 날짜를 함께 적는다.
+    dated = {log.path: log.date for log in logs}
     dated.update({f"monthly/{m.month}/": f"{m.month}-01" for m in monthly})
     locs = []
-    for page_file in sorted(out.rglob("index.html")):
-        rel = page_file.parent.relative_to(out).as_posix()
-        rel = "" if rel == "." else rel + "/"
+    for rel in sorted(written):
         lastmod = f"<lastmod>{dated[rel]}</lastmod>" if rel in dated else ""
         locs.append(f"<url><loc>{escape(site_url + '/' + rel)}</loc>{lastmod}</url>")
     sitemap_lines = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">', *locs, "</urlset>", ""]
@@ -353,7 +491,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
 def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    parser = argparse.ArgumentParser(description="탐라(가제) 사이트 생성기")
+    parser = argparse.ArgumentParser(description="ORN Studio 사이트 생성기")
     parser.add_argument("--root", default=".")
     parser.add_argument("--out", default="_site")
     parser.add_argument("--base", default=None, help="사이트가 놓이는 경로 접두어. 기본은 data/site.json의 base_path")

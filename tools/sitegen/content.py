@@ -19,6 +19,14 @@ class LogEntry:
     media: list[str]
     body_md: str
     next_items: list[str] = field(default_factory=list)
+    # 어느 게임의 기록인가. content/log/*.md(옛 자리)는 탐라, content/log/<게임>/*.md는 그 게임.
+    game: str = "tamna"
+    # 옛 자리(content/log/YYYY-MM-DD.md)에서 읽었는지. 옛 주소 /log/<날짜>/ 넘김 쪽을 만들 때 쓴다.
+    legacy: bool = False
+
+    @property
+    def path(self) -> str:
+        return f"log/{self.game}/{self.date}/"
 
 
 @dataclass
@@ -70,9 +78,25 @@ def _read(path: Path) -> tuple[dict[str, str], str]:
     return parse_frontmatter(path.read_text(encoding="utf-8"))
 
 
+LEGACY_GAME = "tamna"
+GAME_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+
+def _log_files(log_dir: Path) -> list[tuple[Path, str, bool]]:
+    """(파일, 게임, 옛 자리 여부). 옛 자리 content/log/*.md는 탐라 기록이다."""
+    files = [(p, LEGACY_GAME, True) for p in sorted(log_dir.glob("*.md"))]
+    if log_dir.exists():
+        for sub in sorted(d for d in log_dir.iterdir() if d.is_dir()):
+            if not GAME_SLUG.match(sub.name):
+                raise ValueError(f"{sub.name}: 기록 폴더 이름은 영문 소문자·숫자·-만 씁니다")
+            files += [(p, sub.name, False) for p in sorted(sub.glob("*.md"))]
+    return files
+
+
 def load_logs(log_dir: Path) -> list[LogEntry]:
     entries: list[LogEntry] = []
-    for path in sorted(log_dir.glob("*.md")):
+    seen: set[tuple[str, str]] = set()
+    for path, game, legacy in _log_files(log_dir):
         meta, body = _read(path)
         if is_draft(meta):
             continue
@@ -85,6 +109,9 @@ def load_logs(log_dir: Path) -> list[LogEntry]:
         next_items = bullet_items(extract_section(body, "다음에 손댈 것"))
         if not next_items:
             raise ValueError(f"{path.name}: '다음에 손댈 것' 절에 '- ' 항목이 없습니다")
+        if (game, date) in seen:
+            raise ValueError(f"{path.name}: {game}의 {date} 기록이 두 곳에 있습니다(옛 자리와 게임 폴더)")
+        seen.add((game, date))
         entries.append(
             LogEntry(
                 date=date,
@@ -92,9 +119,11 @@ def load_logs(log_dir: Path) -> list[LogEntry]:
                 media=split_list(meta.get("media", "")),
                 body_md=body,
                 next_items=next_items,
+                game=game,
+                legacy=legacy,
             )
         )
-    entries.sort(key=lambda e: e.date, reverse=True)
+    entries.sort(key=lambda e: (e.date, e.game), reverse=True)
     return entries
 
 
