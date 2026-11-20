@@ -301,7 +301,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "footer_nav": footer_nav,
         "header_follow": f'<a class="follow" href="{escape(threads_url)}" rel="noopener">스레드 팔로우</a>' if threads_url else "",
         "site_title": site["title"],
-        "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og.jpg",
+        "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og-studio.jpg",
         "tagline": site.get("tagline", ""),
         "verify_meta": _verify_meta(site),
         "analytics": _analytics(site),
@@ -321,8 +321,8 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "ai_table": ai_table(data["ai"]),
         "latest_monthly": _monthly_link(base, monthly[0]) if monthly else "<li>아직 없습니다</li>",
         "logo": f'<img class="logo-img" src="{base}/static/art/logo-cream-900.webp" alt="탐라" width="900" height="513">',
-        "brand": (f'<span class="brand-text">{escape(site.get("brand_word", site["title"]))}<i class="brand-dot"></i>'
-                  f'<span class="brand-sub">{escape(site.get("brand_sub", ""))}</span></span>'),
+        # D-44 로고: 기호 A 모루와 불티 + Archivo(글자는 외곽선), 원본은 _preview/studio/final
+        "brand": f'<img class="brand-logo" src="{base}/static/brand/logo-horizontal.svg" alt="{escape(site["title"])}" width="146" height="27">',
     }
     for name in ("sun", "brush", "moon", "peony", "hareubang", "bell", "letter", "road", "knot", "cups", "pouch", "magpie"):
         common[f"icon_{name}"] = _icon(base, name)
@@ -398,7 +398,8 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         }
         tpl = f"game_{slug}.html" if (templates / f"game_{slug}.html").exists() else "game.html"
         description = g.get("summary", "") or (_first_paragraph(index_page.body_md) if index_page else "")
-        write_page(f"games/{slug}/", page_html(g["name"], render_template(tpl, ctx, templates), path=f"games/{slug}/", description=description))
+        tamna_og = "static/art/og.jpg" if slug == "tamna" else ""   # 탐라 페이지 공유 그림은 탐라 그림 그대로
+        write_page(f"games/{slug}/", page_html(g["name"], render_template(tpl, ctx, templates), path=f"games/{slug}/", description=description, image=tamna_og))
         for p in subpages:
             if p.slug == "index":
                 continue

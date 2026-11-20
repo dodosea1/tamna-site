@@ -58,11 +58,17 @@ class StudioTest(unittest.TestCase):
         # 그림이 없는 게임은 지어내지 않고 자리만
         self.assertIn("그림 준비 중", home)
 
-    def test_home_is_studio_and_brand_is_text_logo(self):
+    def test_home_is_studio_and_brand_is_logo_image(self):
         out = self.build()
         home = self.read(out, "index.html")
         self.assertIn('class="wrap studio-hero"', home)
-        self.assertIn('<span class="brand-text">', home)
+        self.assertIn('<img class="brand-logo" src="/tamna-site/static/brand/logo-horizontal.svg"', home)
+        for icon in ('href="/tamna-site/static/brand/favicon.ico"', 'href="/tamna-site/static/brand/favicon.svg"',
+                     'rel="apple-touch-icon" href="/tamna-site/static/brand/apple-touch-icon.png"'):
+            self.assertIn(icon, home)
+        self.assertIn('static/art/og-studio.jpg"', home)
+        # 탐라 페이지의 공유 그림은 탐라 그림 그대로
+        self.assertIn('static/art/og.jpg"', self.read(out, "games/tamna/index.html"))
         self.assertNotIn("logo-cream-900", home)  # 탐라 로고 그림은 탐라 페이지에만
 
     def test_same_day_in_old_place_and_game_folder_is_refused(self):

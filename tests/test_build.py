@@ -112,7 +112,7 @@ class IconTest(unittest.TestCase):
         self.assertIn('<img class="logo-img" src="/tamna-site/static/art/logo-cream-900.webp" alt="탐라"', tamna)
         index = (self.out / "index.html").read_text(encoding="utf-8")
         # 머리 로고는 스튜디오 글자 로고, 메뉴는 글자만.
-        self.assertIn('<a class="brand" href="/tamna-site/"><span class="brand-text">', index)
+        self.assertIn('<a class="brand" href="/tamna-site/"><img class="brand-logo" src="/tamna-site/static/brand/logo-horizontal.svg"', index)
         self.assertIn('<a href="/tamna-site/games/">게임</a>', index)
         self.assertIn('<a href="/tamna-site/log/">개발 기록</a>', index)
         self.assertIn('<p class="footer-nav"><a href="/tamna-site/monthly/">이달의 정리</a></p>', index)
@@ -148,7 +148,7 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         ld = _json.loads(html.split('<script type="application/ld+json">')[1].split("</script>")[0])
         self.assertEqual((ld["@type"], ld["datePublished"], ld["url"]), ("Article", "2026-11-07", "https://example.github.io/tamna-site/log/tamna/2026-11-07/"))
         # GIF는 수 MB라 미리보기 그림으로 쓰지 않는다.
-        self.assertIn('<meta property="og:image" content="https://example.github.io/tamna-site/static/art/og.jpg">', html)
+        self.assertIn('<meta property="og:image" content="https://example.github.io/tamna-site/static/art/og-studio.jpg">', html)
 
     def test_pages_without_media_fall_back_to_site_image_and_first_paragraph(self):
         out = self.build()
@@ -157,7 +157,7 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         # 게임 페이지 설명은 games.json의 한 줄 소개
         self.assertIn('<meta name="description" content="제주 신화 섬에서 네 직업이 파티로 사냥하는 온라인 RPG, 혼자 AI와 만드는 중">', html)
         about = (out / "about/index.html").read_text(encoding="utf-8")
-        self.assertIn('content="https://example.github.io/tamna-site/static/art/og.jpg"', about)
+        self.assertIn('content="https://example.github.io/tamna-site/static/art/og-studio.jpg"', about)
 
     def test_header_follow_button_only_when_threads_url_set(self):
         self.assertNotIn('class="follow"', (self.build() / "index.html").read_text(encoding="utf-8"))
