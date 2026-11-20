@@ -20,7 +20,7 @@
     "status": "개발 중",
     "platform": "2D 도트",
     "summary": "연금술 슬라임 2D 도트 게임",
-    "card_image": ""
+    "card_image": "static/art/cards/curvy-800.webp"
   },
   {
     "slug": "mobile-rpg",
@@ -36,7 +36,7 @@
     "status": "운영 중",
     "platform": "웹",
     "summary": "따로 운영 중인 프로젝트. 기록과 소식은 고향 사이트에 있습니다.",
-    "card_image": "",
+    "card_image": "static/art/cards/gohyang-800.webp",
     "url": "https://gohyang.town"
   }
 ]
