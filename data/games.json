@@ -26,9 +26,9 @@
     "slug": "mobile-rpg",
     "name": "이야기보따리(가제)",
     "status": "개발 중",
-    "platform": "모바일 · 2D",
+    "platform": "모바일 · 안드로이드 먼저",
     "summary": "전래동화 세계의 2D 도트 협동 RPG",
-    "card_image": ""
+    "card_image": "static/art/cards/iyagi-800.webp"
   },
   {
     "slug": "gohyang",

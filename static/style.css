@@ -144,6 +144,7 @@ section.wrap { padding: 72px 24px; }
 .article ul, .article ol { padding-left: 1.3em; }
 .article figure { margin: 0 0 22px; }
 .article figure img, .article figure video { width: 100%; height: auto; display: block; border-radius: 14px; }
+.article p > img:not(.ico) { width: 100%; height: auto; display: block; border-radius: 14px; margin: 0 0 6px; }
 .article figcaption { font-size: 0.85rem; color: var(--muted); margin-top: 8px; }
 .crumbs { font-size: 0.88rem; color: var(--muted); margin: 0 0 10px; }
 .crumbs a { color: var(--muted); text-decoration: none; }
