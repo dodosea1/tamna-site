@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from tools.threads_post import (
-    MAX_TEXT, Post, Store, ThreadsError, load_due_post, run, text_length, validate_post,
+    CHROME_UPLOAD_MAX, MAX_TEXT, Post, Store, ThreadsError, load_due_post, run, text_length, validate_post,
 )
 
 KST = timezone(timedelta(hours=9))
@@ -138,6 +138,19 @@ class ValidateTest(Base):
     def test_existing_mp4_passes(self):
         (self.root / "media/a.mp4").write_bytes(b"x")
         self.assertEqual(validate_post(self.post(media="media/a.mp4"), self.root, []), [])
+
+    def test_video_over_chrome_upload_limit_is_blocked_with_fix(self):
+        # 2026-11-22: 12.97MB 영상이 Chrome 업로드 한도(10MB)에 걸려 이틀 예약 못 함.
+        with open(self.root / "media/big.mp4", "wb") as f:
+            f.truncate(CHROME_UPLOAD_MAX + 1)
+        problems = validate_post(self.post(media="media/big.mp4"), self.root, [])
+        self.assertTrue(problems)
+        self.assertIn("--shrink", " ".join(problems))
+
+    def test_video_just_under_limit_passes(self):
+        with open(self.root / "media/ok.mp4", "wb") as f:
+            f.truncate(CHROME_UPLOAD_MAX - 1)
+        self.assertEqual(validate_post(self.post(media="media/ok.mp4"), self.root, []), [])
 
 
 class RunTest(Base):

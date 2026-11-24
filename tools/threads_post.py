@@ -54,6 +54,8 @@ IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
 VIDEO_SUFFIXES = {".mp4", ".mov"}
 IMAGE_MAX = 8 * 1024 * 1024
 VIDEO_MAX = 1024 * 1024 * 1024
+# 실제 게시는 Chrome 예약이고, 그 업로드 도구가 10MB까지만 받는다(2026-11-22 12.97MB 영상으로 이틀 막힘).
+CHROME_UPLOAD_MAX = 10 * 1024 * 1024
 DATE_FILE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
@@ -128,8 +130,12 @@ def _media_problems(media: str, root: Path) -> list[str]:
     path = root / media
     if not path.is_file():
         return ["미디어 파일이 없다"]
+    size = path.stat().st_size
+    if suffix in VIDEO_SUFFIXES and size > CHROME_UPLOAD_MAX:
+        return [f"영상이 {size / 1024 / 1024:.1f}MB로 Chrome 업로드 한도 10MB를 넘는다: "
+                f"python tools/threads_media.py --shrink {media} 로 줄이고 publish.py로 올린다"]
     limit = IMAGE_MAX if suffix in IMAGE_SUFFIXES else VIDEO_MAX
-    return ["미디어 용량이 너무 크다"] if path.stat().st_size > limit else []
+    return ["미디어 용량이 너무 크다"] if size > limit else []
 
 
 class Store:
