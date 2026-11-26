@@ -135,5 +135,101 @@ class GameKeysTest(SiteTest):
         self.assertIn(f'data-src="{B}/media/previews/t.mp4"', home)
 
 
+THREADS = "https://www.threads.com/@x"
+
+
+def full(root):
+    """스레드 주소, 후원 페이지, 탐라 같이하기 페이지가 있는 사이트."""
+    path = root / "data/site.json"
+    site = json.loads(path.read_text(encoding="utf-8"))
+    site["threads_url"] = THREADS
+    path.write_text(json.dumps(site, ensure_ascii=False), encoding="utf-8")
+    (root / "content/pages/support.md").write_text("---\ntitle: 후원\norder: 5\n---\n후원 안내.\n", encoding="utf-8")
+    (root / "content/games/tamna/together.md").write_text("---\ntitle: 같이하기\norder: 1\n---\n명단.\n", encoding="utf-8")
+
+
+def rail_of(html: str) -> str:
+    start = html.index('<section class="other-games')
+    return html[start:html.index("</section>", start)]
+
+
+class GamePageTest(SiteTest):
+    def test_game_page_has_rail_follow_cheer(self):
+        page = self.read(self.build(full), "games/tamna/index.html")
+        rail = rail_of(page)
+        self.assertIn("ORN의 다른 게임", rail)
+        self.assertIn(f'href="{B}/games/curvy/"', rail)
+        self.assertIn("gohyang.town", rail)
+        self.assertNotIn(f"{B}/games/tamna/", rail)
+        self.assertIn("다음 소식 받기", page)
+        self.assertIn('data-goatcounter-click="tester-tamna"', page)
+        self.assertIn(f'href="{THREADS}" rel="noopener">스레드 팔로우', page)
+        self.assertEqual(page.count("개발 응원하기"), 1)
+        # 순서: 다음 소식 → 다른 게임 → 응원
+        self.assertLess(page.index("다음 소식 받기"), page.index("ORN의 다른 게임"))
+        self.assertLess(page.index("ORN의 다른 게임"), page.index("개발 응원하기"))
+
+    def test_game_page_hides_empty_sections(self):
+        # 기록도, 소개 글도, 스레드 주소도, 후원 페이지도 없는 게임
+        page = self.read(self.build(lambda root: shutil.rmtree(root / "content/log/curvy")), "games/curvy/index.html")
+        own = page[page.index("<main>"):page.index('<section class="other-games')]  # 다른 게임 카드 앞까지가 이 게임의 칸
+        for gone in ("아직 기록이 없습니다", "준비 중", "준비하고", "지금 어디까지", "최근 기록", "다음 소식 받기",
+                     '<ul class="log-list', '<p class="muted small"></p>', "<figure"):
+            self.assertNotIn(gone, own)
+        self.assertNotIn("개발 응원하기", page)
+        self.assertIn("ORN의 다른 게임", page)
+        self.assertIn(f'href="{B}/games/tamna/"', rail_of(page))
+
+    def test_now_block_lists_dated_done_items(self):
+        page = self.read(self.build(), "games/tamna/index.html")
+        start = page.index('<section class="now-block">')
+        block = page[start:page.index("</section>", start)]
+        self.assertIn("지금 어디까지", block)
+        self.assertIn('<li><time datetime="2026-11-07">2026-11-07</time> 사례 7개 범위를 조사했다.</li>', block)
+        self.assertLess(block.index("2026-11-07"), block.index("2026-11-06"))
+        self.assertIn("약속 아님", block)
+        # 옛 '다음에 손댈 것' 칸은 이 칸으로 바뀌었다
+        self.assertNotIn("다음에 손댈 것 ·", page)
+
+    def test_game_page_logs_are_latest_three_and_link_to_all(self):
+        def more(root):
+            for day in ("2026-11-08", "2026-11-09"):
+                (root / f"content/log/{day}.md").write_text(
+                    f"---\ndate: {day}\ntitle: 제목 {day}\n---\n## 한 일\n- 일\n## 막힌 것\n- 없음\n## 다음에 손댈 것 (약속 아님)\n- 다음\n", encoding="utf-8")
+        page = self.read(self.build(more), "games/tamna/index.html")
+        self.assertIn(f'href="{B}/log/tamna/2026-11-09/"', page)
+        self.assertIn(f'href="{B}/log/tamna/2026-11-07/"', page)
+        self.assertNotIn(f'href="{B}/log/tamna/2026-11-06/"', page)
+        self.assertIn(f'href="{B}/log/tamna/">', page)
+
+    def test_log_with_still_image_gets_lazy_thumbnail(self):
+        def still(root):
+            (root / "media/log/a.jpg").write_bytes(b"0")
+            path = root / "content/log/2026-11-06.md"
+            path.write_text(path.read_text(encoding="utf-8").replace("title:", "media: media/log/a.jpg\ntitle:", 1), encoding="utf-8")
+        page = self.read(self.build(still), "games/tamna/index.html")
+        self.assertIn(f'<img class="thumb" src="{B}/media/log/a.jpg" alt="" loading="lazy">', page)
+        # 움직이는 그림(GIF)은 수 MB라 목록에 넣지 않는다
+        self.assertNotIn('class="thumb" src="/tamna-site/media/log/2026-11-07-hunter-sweep.gif"', page)
+
+    def test_slides_render_as_crossfade(self):
+        pics = ["static/art/cards/curvy-800.webp", "static/art/cards/iyagi-800.webp"]
+        page = self.read(self.build(lambda root: self.games(root, lambda g: g["curvy"].update({"slides": pics}))), "games/curvy/index.html")
+        start = page.index('<div class="slides" data-slides>')
+        block = page[start:page.index("</div>", start)]
+        self.assertEqual(block.count("<img"), 2)
+        self.assertEqual(block.count('loading="eager"'), 1)
+        self.assertEqual(block.count('loading="lazy"'), 1)
+        self.assertLess(block.index('loading="eager"'), block.index('loading="lazy"'))
+        self.assertIn(f'src="{B}/static/art/cards/curvy-800.webp"', block)
+
+    def test_game_page_shows_status_and_card_picture_when_nothing_else(self):
+        def card(root):
+            self.games(root, lambda g: g["curvy"].update({"card_image": "static/art/cards/curvy-800.webp", "platform": "2D 도트"}))
+        page = self.read(self.build(card), "games/curvy/index.html")
+        self.assertIn('<span class="tag dev">개발 중</span><span class="tag">2D 도트</span>', page)
+        self.assertIn(f'<figure class="game-shot"><img src="{B}/static/art/cards/curvy-800.webp" alt="" loading="eager"></figure>', page)
+
+
 if __name__ == "__main__":
     unittest.main()

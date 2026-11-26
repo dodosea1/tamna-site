@@ -15,13 +15,13 @@
     <div>
       <p class="eyebrow">{{icon_sun}}지금 게임 화면</p>
       {{play}}
-      <p class="now-head">다음에 손댈 것 · {{now_date}} 기록 기준 · 약속 아님</p>
-      <ul class="now-list">{{now_items}}</ul>
+      {{now_block}}
     </div>
     <div>
       <p class="eyebrow">{{icon_brush}}최근 탐라 기록</p>
       <ul class="log-list">{{latest_logs}}</ul>
       {{log_more}}
+      {{follow}}
     </div>
   </div>
 </section>
@@ -51,7 +51,7 @@
 <article class="article">
 <p class="eyebrow">{{icon_peony}}게임 소개</p>
 {{body}}
-<p class="muted small">{{subnav}}</p>
+{{subnav}}
 </article>
 </section>
 
@@ -81,3 +81,5 @@
   </div>
 </div>
 </section>
+{{other_games}}
+{{cheer}}

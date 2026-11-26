@@ -31,12 +31,6 @@ def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
 
 
-def _li(items: list[str], empty: str = "아직 없습니다") -> str:
-    if not items:
-        return f"<li>{empty}</li>"
-    return "".join(f"<li>{escape(i)}</li>" for i in items)
-
-
 def _media_html(base: str, path: str, label: str = "") -> str:
     src = f"{base}/{path}"
     caption = f'<figcaption>{escape(label)}</figcaption>' if label else ""
@@ -182,10 +176,46 @@ def _excerpt(log: LogEntry) -> str:
     return items[0] if items else ""
 
 
-def _log_link(base: str, log: LogEntry, game_names: dict[str, str] | None = None) -> str:
+def _log_link(base: str, log: LogEntry, game_names: dict[str, str] | None = None, *, thumb: bool = False, excerpt: bool = True) -> str:
+    """기록 목록의 한 줄. thumb이면 기록의 멈춘 그림을 작게 붙인다(GIF는 수 MB라 뺀다)."""
     tag = f'<span class="g">{escape(game_names[log.game])}</span>' if game_names and log.game in game_names else ""
-    return (f'<li><a href="{base}/{log.path}"><span class="d">{escape(log.date)}</span>'
-            f'<span class="t">{tag}{escape(log.title)}</span><span class="x">{escape(_excerpt(log))}</span></a></li>')
+    still = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "") if thumb else ""
+    pic = f'<img class="thumb" src="{base}/{escape(still)}" alt="" loading="lazy">' if still else ""
+    cls = ' class="has-thumb"' if still else ""
+    x = f'<span class="x">{escape(_excerpt(log))}</span>' if excerpt else ""
+    return (f'<li><a{cls} href="{base}/{log.path}"><span class="d">{escape(log.date)}</span>'
+            f'<span class="t">{tag}{escape(log.title)}</span>{x}{pic}</a></li>')
+
+
+def _first_sentence(text: str) -> str:
+    """긴 항목의 첫 문장만. 문장 끝(. ! ? 뒤 공백)이 없으면 그대로."""
+    m = re.match(r"(.+?[.!?])\s", text)
+    return m.group(1) if m else text
+
+
+def _now_block(lines: list[tuple[str, str]]) -> str:
+    """'지금 어디까지' 칸. 근거는 최근 공개 기록의 '한 일'이고 날짜를 붙인다. 줄이 없으면 칸을 두지 않는다."""
+    if not lines:
+        return ""
+    items = "".join(f'<li><time datetime="{escape(d)}">{escape(d)}</time> {escape(_first_sentence(text))}</li>' for d, text in lines)
+    return f'<section class="now-block"><p class="eyebrow">지금 어디까지</p><ul>{items}</ul><p class="muted small">개발 기록 기준 · 약속 아님</p></section>'
+
+
+def _slides_html(base: str, g: dict) -> str:
+    """개발 중 화면 여러 장을 겹쳐 두고 site.js가 천천히 바꾼다. 첫 장만 바로 받는다."""
+    slides = g.get("slides") or []
+    if not slides:
+        return ""
+    imgs = "".join(f'<img src="{base}/{escape(s)}" alt="" loading="{"eager" if i == 0 else "lazy"}"{" class=\"on\"" if i == 0 else ""}>' for i, s in enumerate(slides))
+    return f'<figure class="game-shot"><div class="slides" data-slides>{imgs}</div><figcaption>개발 중 화면 · 바뀔 수 있습니다</figcaption></figure>'
+
+
+def _game_tags(g: dict) -> str:
+    status = g.get("status", "개발 중")
+    tags = f'<span class="tag {GAME_STATUS.get(status, "dev")}">{escape(status)}</span>'
+    if g.get("platform"):
+        tags += f'<span class="tag">{escape(g["platform"])}</span>'
+    return f'<p class="tags">{tags}</p>'
 
 
 def _redirect_html(base: str, site_url: str, target: str) -> str:
@@ -379,21 +409,34 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         subpages = game_pages.get(slug, [])
         index_page = next((p for p in subpages if p.slug == "index"), None)
         g_logs = [log for log in logs if log.game == slug]
-        latest = g_logs[0] if g_logs else None
+        has_together = any(p.slug == "together" for p in subpages)
+        subnav = " · ".join(f'<a href="{base}/games/{slug}/{p.slug}/">{escape(p.title)}</a>' for p in subpages if p.slug != "index")
+        # 맨 위 그림: 첫 화면 그림(hero_media) → 그림 넘김(slides) → 카드 그림 순. 아무것도 없으면 칸을 두지 않는다.
+        shot = _hero_html(base, g) or _slides_html(base, g)
+        if not shot and g.get("card_image"):
+            shot = f'<figure class="game-shot"><img src="{base}/{escape(g["card_image"])}" alt="" loading="eager"></figure>'
+        log_items = "".join(_log_link(base, log, thumb=True, excerpt=False) for log in g_logs[:3])
+        log_more = f'<a class="more" href="{base}/log/{slug}/">{escape(g["name"])} 기록 전체</a>' if g_logs else ""
         ctx = {
             **gfill,
             "game_name": g["name"],
             "game_summary": g.get("summary", ""),
             "game_slug": slug,
-            "body": md_to_html(fill(index_page.body_md, gfill)) if index_page else '<p class="muted">소개 자료를 준비하고 있습니다.</p>',
-            "subnav": " · ".join(f'<a href="{base}/games/{slug}/{p.slug}/">{escape(p.title)}</a>' for p in subpages if p.slug != "index"),
-            "latest_logs": "".join(_log_link(base, log) for log in g_logs[:5]) or "<li>아직 기록이 없습니다</li>",
-            "log_more": f'<a class="more" href="{base}/log/{slug}/">{escape(g["name"])} 기록 전체</a>' if g_logs else "",
-            "now_date": latest.date if latest else "",
-            "now_items": _li(latest.next_items if latest else []),
+            # 근거가 없는 칸은 빈 문자열로 두어 통째로 숨긴다("준비 중"·"아직 없습니다"를 띄우지 않는다).
+            "game_tags": _game_tags(g),
+            "body": md_to_html(fill(index_page.body_md, gfill)) if index_page else "",
+            "subnav": f'<p class="muted small">{subnav}</p>' if subnav else "",
+            "latest_logs": log_items,
+            "log_more": log_more,
+            "logs_block": f'<h2>최근 기록</h2><ul class="log-list">{log_items}</ul>{log_more}' if g_logs else "",
+            "now_block": _now_block(now_lines(g_logs)),
+            "follow": follow_block(base, g, threads_url, has_together),
+            "other_games": other_games_rail(base, games, slug),
+            "cheer": cheer_line(base, "support" in titles),
             "hero": _hero_html(base, g),
+            "shot": shot,
             "play": _play_html(base, g),
-            "hero_cta": (f'<a class="btn" href="{base}/games/{slug}/together/">같이 사냥할 명단 올리기</a>' if any(p.slug == "together" for p in subpages)
+            "hero_cta": (f'<a class="btn" href="{base}/games/{slug}/together/">같이 사냥할 명단 올리기</a>' if has_together
                          else (f'<a class="btn" href="{base}/log/{slug}/">개발 기록 보기</a>' if g_logs else "")),
         }
         tpl = f"game_{slug}.html" if (templates / f"game_{slug}.html").exists() else "game.html"

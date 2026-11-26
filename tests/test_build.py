@@ -38,9 +38,12 @@ class BuildTest(unittest.TestCase):
             self.assertTrue((self.out / p).exists(), p)
 
     def test_index_shows_now_items_from_latest_log(self):
-        # '다음에 손댈 것'과 영감 문장, 첫 화면 그림은 이제 탐라 페이지에 있다.
+        # 영감 문장, 첫 화면 그림은 탐라 페이지에 있다. '다음에 손댈 것' 칸은 2026-11-26 리뉴얼에서
+        # '지금 어디까지'(최근 기록의 한 일)로 바뀌었다. 다음에 손댈 것은 기록 글에 그대로 있다.
         html = (self.out / "games/tamna/index.html").read_text(encoding="utf-8")
-        self.assertIn("사이트 생성기 뼈대.", html)
+        self.assertIn("사례 7개 범위를 조사했다.", html)
+        self.assertNotIn("사이트 생성기 뼈대.", html)
+        self.assertIn("사이트 생성기 뼈대.", (self.out / "log/tamna/2026-11-07/index.html").read_text(encoding="utf-8"))
         self.assertIn("1990년대 후반 한국 2D 온라인 RPG들에서 영감을 받았고", html)
         self.assertIn("실제 플레이 화면(개발 중)", html)
 
