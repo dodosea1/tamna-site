@@ -586,6 +586,17 @@ class PolishTest(SiteTest):
     def test_pages_fade_into_each_other_where_the_browser_can(self):
         self.assertIn("@view-transition { navigation: auto; }", self.css)
 
+    def test_tamna_page_says_its_inspiration_once(self):
+        line = "1990년대 후반 한국 2D 온라인 RPG들에서 영감을 받았고"
+        self.assertEqual(self.read(self.build(), "games/tamna/index.html").count(line), 1)   # 본문에 없으면 '세계' 칸에
+
+        def in_text(root):
+            path = root / "content/games/tamna/index.md"
+            path.write_text(path.read_text(encoding="utf-8") + "\n{{inspiration}}\n", encoding="utf-8")
+        page = self.read(self.build(in_text), "games/tamna/index.html")
+        self.assertEqual(page.count(line), 1)                                              # 본문에 있으면 그 한 번만
+        self.assertNotIn("<p></p>", page)
+
     def test_korean_text_breaks_between_words(self):
         self.assertRegex(self.css, r"body [{][^}]*word-break: keep-all")
         self.assertRegex(self.css, r"body [{][^}]*overflow-wrap: break-word")

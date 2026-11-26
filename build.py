@@ -428,8 +428,11 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         hero_cta = (f'<a class="btn" href="{base}/games/{slug}/together/" data-goatcounter-click="tester-{slug}">같이 사냥할 명단 올리기</a>' if has_together else "")
         screen = _play_html(base, g, root) or _slides_html(base, g)
         body = md_to_html(fill(index_page.body_md, gfill)) if index_page else ""
+        # 영감 문장: 본문이 이미 적고 있으면 틀('세계' 칸)에서 한 번 더 적지 않는다.
+        said = bool(gfill["inspiration"]) and "{{inspiration}}" in (index_page.body_md if index_page else "")
         ctx = {
             **gfill,
+            "inspiration_note": f'<p>{gfill["inspiration"]}</p>' if gfill["inspiration"] and not said else "",
             "game_name": g["name"],
             "game_slug": slug,
             "panel": panel(base, g, heading="h1", eager=True, cta=hero_cta, wide=True),
