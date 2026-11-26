@@ -52,9 +52,9 @@ class StudioTest(unittest.TestCase):
     def test_external_card_links_out_and_gets_no_page(self):
         out = self.build()
         home = self.read(out, "index.html")
-        self.assertIn('<a class="game-card" href="https://gohyang.town" rel="noopener">', home)
+        self.assertIn('<a class="game-card" href="https://gohyang.town" rel="noopener" data-goatcounter-click="card-gohyang">', home)
         self.assertFalse((out / "games/gohyang").exists())
-        self.assertIn('<a class="game-card" href="/tamna-site/games/curvy/">', home)
+        self.assertIn('<a class="game-card" href="/tamna-site/games/curvy/" data-goatcounter-click="card-curvy">', home)
         # 그림이 없는 게임은 지어내지 않고 자리만
         self.assertIn("그림 준비 중", home)
 

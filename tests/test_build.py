@@ -188,8 +188,10 @@ class SharePreviewAndHomeTest(unittest.TestCase):
             self.assertTrue((out / src).exists(), src)
 
     def test_analytics_tag_only_with_a_valid_code(self):
-        self.assertNotIn("goatcounter", (self.build() / "index.html").read_text(encoding="utf-8"))
+        # 집계 스크립트가 없어야 한다. 카드의 data-goatcounter-click 속성은 스크립트 없이는 아무 일도 하지 않는다.
+        self.assertNotIn("gc.zgo.at", (self.build() / "index.html").read_text(encoding="utf-8"))
         out = self.build(lambda s: s.update(goatcounter_code="tamna"))
         self.assertIn('<script data-goatcounter="https://tamna.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>', (out / "games/tamna/index.html").read_text(encoding="utf-8"))
         bad = self.build(lambda s: s.update(goatcounter_code='x" onload="alert(1)'))
-        self.assertNotIn("goatcounter", (bad / "index.html").read_text(encoding="utf-8"))
+        self.assertNotIn("gc.zgo.at", (bad / "index.html").read_text(encoding="utf-8"))
+        self.assertNotIn("onload", (bad / "index.html").read_text(encoding="utf-8"))

@@ -18,6 +18,7 @@ from tools.sitegen.donate import donate_block, is_direct, shows_ctee
 from tools.sitegen.content import LogEntry, Monthly, bullet_items, extract_section, load_logs, load_monthly, load_pages
 from tools.sitegen.feed import FeedItem, build_rss
 from tools.sitegen.render import fill, md_to_html, render_template
+from tools.sitegen.studio import GAME_STATUS, cheer_line, follow_block, game_card, live_line, now_lines, other_games_rail
 from tools.sitegen.tables import ai_table, feedback_table, roadmap_section, support_section
 
 
@@ -49,8 +50,6 @@ def _media_html(base: str, path: str, label: str = "") -> str:
 # 위쪽 메뉴에 두는 다섯 곳. 나머지 페이지는 아래쪽(푸터)으로 간다.
 MAIN_NAV = ("games", "log", "feedback", "support", "about")
 NAV_LABELS = {"games": "게임", "log": "개발 기록", "monthly": "이달의 정리"}
-# 게임 상태 표시. games.json의 status 값이 이 중 하나여야 한다.
-GAME_STATUS = {"개발 중": "dev", "운영 중": "live", "쉬는 중": "rest"}
 # 공유 미리보기 그림. GIF는 수 MB라 미리보기에서 잘리거나 실패해 빼고, 없으면 기본 og.jpg를 쓴다.
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -202,24 +201,6 @@ def _redirect_html(base: str, site_url: str, target: str) -> str:
     )
 
 
-def _game_card(base: str, g: dict) -> str:
-    """첫 화면·게임 목록의 게임 카드. 바깥 주소(url)가 있으면 그리로, 없으면 게임 페이지로."""
-    external = g.get("url", "")
-    href = escape(external) if external else f"{base}/games/{g['slug']}/"
-    rel = ' rel="noopener"' if external else ""
-    img = g.get("card_image", "")
-    pic = (f'<img src="{base}/{escape(img)}" alt="" loading="lazy">' if img
-           else '<span class="pic-empty">그림 준비 중</span>')
-    status = g.get("status", "개발 중")
-    tags = f'<span class="tag {GAME_STATUS.get(status, "dev")}">{escape(status)}</span>'
-    if g.get("platform"):
-        tags += f'<span class="tag">{escape(g["platform"])}</span>'
-    if external:
-        tags += f'<span class="tag">{escape(external.split("//", 1)[-1].rstrip("/"))} ↗</span>'
-    return (f'<a class="game-card" href="{href}"{rel}><div class="pic">{pic}</div>'
-            f'<div class="body"><h3>{escape(g["name"])}</h3><p>{escape(g.get("summary", ""))}</p><p class="tags">{tags}</p></div></a>')
-
-
 def _monthly_link(base: str, m: Monthly) -> str:
     return f'<li><a href="{base}/monthly/{m.month}/"><span class="d">{escape(m.month)}</span><span class="t">{escape(m.title)}</span></a></li>'
 
@@ -351,7 +332,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         written.add(path)
         _write(out / path / "index.html", html)
 
-    cards = "".join(_game_card(base, g) for g in games)
+    cards = "".join(game_card(base, g) for g in games)
     has_tester = any(p.slug == "together" for p in game_pages.get("tamna", []))
 
     # 스튜디오 첫 화면
