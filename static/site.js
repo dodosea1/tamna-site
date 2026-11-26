@@ -11,6 +11,8 @@
   var saveData = !!(navigator.connection && navigator.connection.saveData);
   var motionOK = !reduced && !saveData;
   var canObserve = 'IntersectionObserver' in window;
+  /* 이 파일이 실제로 돌았다는 표시. 폭의 세로 제목·도장을 들어올 때까지 숨기는 CSS는 이 표시가 있을 때만 걸린다. */
+  root.classList.add('ready');
 
   /* 메일 주소: 수집 봇을 피해 스크립트로 조립한다. */
   all('.email').forEach(function (e) { e.textContent = e.dataset.u + '@' + e.dataset.d; });
@@ -53,6 +55,7 @@
     var onScroll = function () { header.classList.toggle('solid', firstPaper.getBoundingClientRect().top <= header.offsetHeight); };
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll, { passive: true });
+    window.addEventListener('load', onScroll);
     onScroll();
   }
 
@@ -67,37 +70,34 @@
     t.textContent = days === 0 ? '오늘' : (days === 1 ? '어제' : days + '일 전');
   });
 
-  /* 병풍 폭: 화면에 반 넘게 들어오면 in(세로 제목과 도장이 찍히듯 나타남, 한 번만)을 붙이고 넘김 점을 옮긴다.
-     움직임을 줄이거나 지켜볼 수 없으면 모든 폭을 처음부터 in으로 둔다. */
+  /* 병풍 폭: 화면 가운데에 걸친 폭에 in(세로 제목과 도장이 찍히듯 나타남, 한 번만)을 붙이고 넘김 점을 옮긴다.
+     화면 감시(IntersectionObserver)에 기대지 않고 스크롤 위치로 직접 본다. 폭은 많아야 몇 개다.
+     움직임을 줄이면 모든 폭을 처음부터 in으로 둔다. */
   var panels = all('.panel');
-  var dots = all('.dots a');
-  var markDot = function (panel) {
-    dots.forEach(function (d) { d.classList.toggle('on', d.getAttribute('href') === '#' + panel.id); });
-  };
-  if (canObserve && panels.length) {
-    var panelWatcher = new IntersectionObserver(function (entries) {
-      entries.forEach(function (entry) {
-        if (!entry.isIntersecting) { return; }
-        entry.target.classList.add('in');
-        markDot(entry.target);
-      });
-    }, { threshold: 0.5 });
+  var dots = all('.dots i');
+  if (!motionOK) { panels.forEach(function (p) { p.classList.add('in'); }); }
+  var checkPanels = function () {
+    var middle = window.innerHeight / 2;
+    var centered = null;
     panels.forEach(function (p) {
-      if (!motionOK) { p.classList.add('in'); }
-      panelWatcher.observe(p);
+      var box = p.getBoundingClientRect();
+      if (box.top < window.innerHeight * 0.75 && box.bottom > window.innerHeight * 0.25) { p.classList.add('in'); }
+      if (box.top <= middle && box.bottom > middle) { centered = p; }
     });
-    /* 한지 마무리 폭에 들어서면 점을 모두 끈다 */
-    if (firstPaper && dots.length) {
-      new IntersectionObserver(function (entries) {
-        if (entries[0].isIntersecting && entries[0].boundingClientRect.top < window.innerHeight * 0.5) {
-          dots.forEach(function (d) { d.classList.remove('on'); });
-        }
-      }, { threshold: [0, 0.2, 0.5] }).observe(firstPaper);
-    }
-  } else {
-    panels.forEach(function (p) { p.classList.add('in'); });
+    dots.forEach(function (d) { d.classList.toggle('on', !!centered && d.getAttribute('data-for') === centered.id); });
+  };
+  if (panels.length) {
+    var queued = false;
+    var queueCheck = function () {
+      if (queued) { return; }
+      queued = true;
+      (window.requestAnimationFrame || setTimeout)(function () { queued = false; checkPanels(); });
+    };
+    window.addEventListener('scroll', queueCheck, { passive: true });
+    window.addEventListener('resize', queueCheck, { passive: true });
+    window.addEventListener('load', checkPanels);
+    checkPanels();
   }
-  if (dots.length && panels.length && !doc.querySelector('.dots a.on')) { dots[0].classList.add('on'); }
 
   /* 영상: 폭에 끼운 미리보기(.card-video)와 게임 화면(.play-video).
      처음에는 포스터 그림만 있다. 화면에 반 넘게 들어온 영상 가운데 가장 많이 보이는 하나만 받아서 재생한다. */

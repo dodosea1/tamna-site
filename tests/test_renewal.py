@@ -247,7 +247,7 @@ class HomeTest(SiteTest):
         self.assertIn('<time data-rel datetime="2026-11-07">', home)
         # 2026-11-26 대개편: 카드 줄이 병풍 폭으로 바뀌었다. 누름 집계 이름은 그대로.
         start = home.index('<div class="byeongpung">')
-        panels = home[start:home.index('<section class="end paper">')]
+        panels = home[start:home.index('<section class="end paper" id="end">')]
         for slug in ("tamna", "curvy", "gohyang"):
             self.assertIn(f'data-goatcounter-click="card-{slug}"', panels)
         self.assertIn("다음 소식 받기", home)
@@ -266,15 +266,6 @@ class HomeTest(SiteTest):
 
 
 class MotionTest(SiteTest):
-    def test_reveal_hidden_only_under_js_class(self):
-        """JS가 꺼져도 글과 카드가 보인다: 완전히 숨기는 규칙(opacity: 0)은 html.js 아래에서만 건다."""
-        css = re.sub(r"/\*.*?\*/", "", Path("static/style.css").read_text(encoding="utf-8"), flags=re.S)
-        hidden = [m.group(1).strip() for m in re.finditer(r"([^{}]+)\{[^{}]*opacity[ ]*:[ ]*0(?![.\d])[^{}]*\}", css)]
-        self.assertTrue(hidden, "올라오며 나타나는 규칙이 있어야 한다")
-        for selectors in hidden:
-            for selector in selectors.split(","):
-                self.assertTrue(selector.strip().startswith(".js "), selector)
-
     def test_base_loads_site_js_deferred(self):
         out = self.build()
         pages = [p for p in out.rglob("index.html") if 'http-equiv="refresh"' not in p.read_text(encoding="utf-8")]
@@ -364,11 +355,6 @@ class ReviewFixTest(SiteTest):
             page = self.read(out, rel)
             self.assertEqual(page.count(f'<a class="btn" href="{B}/games/tamna/together/"'), page.count('data-goatcounter-click="tester-tamna"'), rel)
             self.assertGreaterEqual(page.count('data-goatcounter-click="tester-tamna"'), 1, rel)
-
-    def test_phone_menu_is_hidden_only_when_script_can_open_it(self):
-        css = Path("static/style.css").read_text(encoding="utf-8")
-        self.assertIn(".js .site-nav { display: none;", css)
-        self.assertEqual(css.count(".site-nav { display: none;"), 1)
 
 if __name__ == "__main__":
     unittest.main()

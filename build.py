@@ -265,6 +265,12 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
 
     games = _load_games(root)
     _check_game_media(games, root, static)
+    for g in games:
+        # 폭에 끼운 미리보기 영상의 포스터: media/previews/<영상 이름>.jpg(그 영상의 한 장면)가 있으면 그것을 쓴다.
+        if g.get("card_video"):
+            frame = str(Path(g["card_video"]).with_suffix(".jpg")).replace(chr(92), "/")
+            if (root / frame).is_file():
+                g["clip_poster"] = frame
     game_by_slug = {g["slug"]: g for g in games}
     game_names = {g["slug"]: g["name"] for g in games}
     logs = load_logs(root / "content" / "log")
@@ -381,7 +387,8 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         # 후원은 한 줄만 둔다. 둘 다 없으면 칸을 두지 않는다.
         "home_follow": f'<div class="home-follow">{home_follow}</div>' if home_follow else "",
     }
-    dots = '<nav class="dots" aria-label="게임">' + "".join(f'<a href="#p-{escape(g["slug"])}" aria-label="{escape(g["name"])}"></a>' for g in games) + "</nav>"
+    # 넘김 점: 지금 몇 번째 폭인지 보여 주는 표시(누르는 것이 아님). site.js가 on을 옮긴다.
+    dots = '<div class="dots" aria-hidden="true">' + "".join(f'<i data-for="p-{escape(g["slug"])}"{" class=\"on\"" if i == 0 else ""}></i>' for i, g in enumerate(games)) + "</div>"
     write_page("", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"], kind="home", dots=dots))
 
     # 게임 목록과 게임 페이지

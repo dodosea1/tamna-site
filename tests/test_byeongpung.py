@@ -61,6 +61,10 @@ class PanelTest(unittest.TestCase):
         video = html[html.index("<video"):html.index("</video>")]
         self.assertNotIn(" src=", video)
 
+    def test_panel_clip_prefers_a_frame_of_the_clip_as_poster(self):
+        g = {**TAMNA, "card_image": "static/art/k.webp", "card_video": "media/previews/t.mp4", "clip_poster": "media/previews/t.jpg"}
+        self.assertIn(f'poster="{B}/media/previews/t.jpg"', panel(B, g))
+
     def test_pieces_escape_values(self):
         g = {"slug": "x", "name": "<b>이름</b>", "summary": 'a"b<i>', "status": "개발 중", "url": 'https://e.com/?a="b"'}
         for html in (panel(B, g), other_games_rail(B, [g, TAMNA], "tamna")):
@@ -170,10 +174,12 @@ class FrameTest(SiteTest):
     def test_home_has_one_dot_per_game_and_others_have_none(self):
         out = self.build()
         home = self.read(out, "index.html")
-        start = home.index('<nav class="dots"')
-        dots = home[start:home.index("</nav>", start)]
-        self.assertEqual(dots.count("<a "), 3)
-        self.assertIn('<a href="#p-tamna" aria-label="탐라(가제)"></a>', dots)
+        # 넘김 점은 지금 몇 번째 폭인지 보여 주는 표시다(누르는 것이 아니다. 폭은 밀어서 넘긴다).
+        start = home.index('<div class="dots" aria-hidden="true">')
+        dots = home[start:home.index("</div>", start)]
+        self.assertEqual(dots.count("<i "), 3)
+        self.assertIn('<i data-for="p-tamna" class="on"></i>', dots)
+        self.assertEqual(dots.count('class="on"'), 1)
         for rel in ("about/index.html", "games/tamna/index.html", "log/index.html"):
             self.assertNotIn('class="dots"', self.read(out, rel), rel)
 
@@ -204,16 +210,26 @@ class HomeTest(SiteTest):
         self.assertLess(home.index('id="p-curvy"'), home.index('id="p-gohyang"'))
         self.assertLessEqual(home.count('fetchpriority="high"'), 1)
         self.assertLess(home.index('id="p-gohyang"'), home.index('<div class="obang" aria-hidden="true"></div>'))
-        self.assertLess(home.index('<div class="obang"'), home.index('<section class="end paper">'))
+        self.assertLess(home.index('<div class="obang"'), home.index('<section class="end paper" id="end">'))
         for slug in ("tamna", "curvy", "gohyang"):
             self.assertIn(f'data-goatcounter-click="card-{slug}"', home)
         for old in ("studio-hero", 'class="game-card"', 'class="box"', "log-list"):
             self.assertNotIn(old, home)
         self.assertEqual(home.count("<h1"), 1)
 
+    def test_home_clip_poster_is_the_clip_frame_when_one_exists(self):
+        def clip(root, with_frame):
+            (root / "media/previews").mkdir(parents=True)
+            (root / "media/previews/t.mp4").write_bytes(b"0")
+            if with_frame:
+                (root / "media/previews/t.jpg").write_bytes(b"0")
+            self.games(root, lambda g: g["tamna"].update({"card_video": "media/previews/t.mp4", "card_image": "static/art/cards/curvy-800.webp"}))
+        self.assertIn(f'poster="{B}/media/previews/t.jpg"', self.read(self.build(lambda r: clip(r, True)), "index.html"))
+        self.assertIn(f'poster="{B}/static/art/cards/curvy-800.webp"', self.read(self.build(lambda r: clip(r, False)), "index.html"))
+
     def test_home_end_shows_latest_card_patch_follow_cheer_once(self):
         home = self.read(self.build(full), "index.html")
-        end = between(home, '<section class="end paper">', "</section>")
+        end = between(home, '<section class="end paper" id="end">', "</section>")
         self.assertIn('<h1 class="sf">', end)
         self.assertEqual(end.count('class="latest"'), 1)
         self.assertIn(f'<a class="latest" href="{B}/log/tamna/2026-11-07/">', end)   # 같은 날이면 정렬 첫째
@@ -328,6 +344,51 @@ class ReadingPagesTest(SiteTest):
             self.assertIn('<div class="paper">', main, rel)
             self.assertEqual(main.count("<h1"), 1, rel)
             self.assertLess(main.index('<div class="paper">'), main.index("<h1"), rel)
+
+
+class StyleTest(unittest.TestCase):
+    def setUp(self):
+        self.css = re.sub(r"/[*].*?[*]/", "", Path("static/style.css").read_text(encoding="utf-8"), flags=re.S)
+
+    def test_css_uses_the_five_colors_and_no_old_palette(self):
+        for color in ("#1f4f8a", "#c7402d", "#e3b43c", "#f3eee2", "#101a2e"):
+            self.assertIn(color, self.css)
+        for old in ("#14132b", "#e3b24f", "999px", ".reveal", ".game-card:hover { border-color: rgba(227"):
+            self.assertNotIn(old, self.css)
+        self.assertIn("writing-mode: vertical-rl", self.css)
+        self.assertIn("scroll-snap-type: y mandatory", self.css)
+        self.assertIn('"Gowun Batang"', self.css)
+
+    def test_hiding_rules_only_under_js(self):
+        """스크립트가 꺼져도 글과 링크가 보인다: 숨기는 규칙은 html.js 아래(또는 스크립트 없을 때 대신 보여 주는 규칙)에서만."""
+        # 내용이 아닌 것만 예외: 넓은 화면의 메뉴 버튼·넘김 점, 스크롤 막대
+        allowed = {".menu-toggle", ".dots", ".rail::-webkit-scrollbar"}
+        hiding = re.compile(r"opacity[ ]?:[ ]?0(?![.\d])|visibility[ ]?:[ ]?hidden|display[ ]?:[ ]?none")
+        found = 0
+        for m in re.finditer(r"([^{}]+)\{([^{}]*)\}", self.css):
+            if not hiding.search(m.group(2)):
+                continue
+            for selector in (s.strip() for s in m.group(1).split(",")):
+                if re.fullmatch(r"from|to|\d+%", selector) or selector in allowed:
+                    continue
+                found += 1
+                self.assertRegex(selector, r"^(\.js[ .]|html:not\(\.js\) )", selector)
+        self.assertGreater(found, 2)
+
+    def test_reduced_motion_block_exists(self):
+        start = self.css.index("@media (prefers-reduced-motion: reduce)")
+        block = self.css[start:start + 400]
+        self.assertIn("animation: none", block)
+        self.assertIn("transition: none", block)
+
+    def test_title_font_classes_match_the_collector(self):
+        from tools.sitegen.fonts import SERIF_CLASSES
+        rule = re.search(r"([^{}]+)\{[^{}]*font-family[ ]?:[ ]*var\(--serif\)", self.css)
+        self.assertIsNotNone(rule)
+        for cls in SERIF_CLASSES:
+            self.assertRegex(rule.group(1), rf"\.{cls}\b")
+        for tag in ("h1", "h2", "h3"):
+            self.assertRegex(rule.group(1), rf"(^|[\s,]){tag}\b")
 
 
 if __name__ == "__main__":

@@ -152,7 +152,8 @@ def panel(base: str, g: dict, *, heading: str = "h2", eager: bool = False, cta: 
         mode, pics = "bare", ""
     clip = ""
     if g.get("card_video"):
-        poster = f' poster="{base}/{escape(card)}"' if card else ""
+        still = g.get("clip_poster") or card   # clip_poster는 build.py가 채운다(영상의 한 장면이 있으면 그것)
+        poster = f' poster="{base}/{escape(still)}"' if still else ""
         clip = (f'<video class="card-video panel-clip" data-src="{base}/{escape(g["card_video"])}"{poster} muted loop playsinline '
                 f'preload="none" aria-hidden="true" tabindex="-1"></video>')
     if cta is None:
