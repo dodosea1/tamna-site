@@ -3,7 +3,8 @@
 (function () {
   'use strict';
   var doc = document;
-  function all(selector, root) { return Array.prototype.slice.call((root || doc).querySelectorAll(selector)); }
+  var root = doc.documentElement;
+  function all(selector, from) { return Array.prototype.slice.call((from || doc).querySelectorAll(selector)); }
 
   /* 움직임을 줄이라는 설정이거나 데이터 절약 모드면 저절로 움직이거나 영상을 받지 않는다. */
   var reduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -25,22 +26,33 @@
     });
   });
 
-  /* 휴대폰 메뉴 */
+  /* 메뉴: 휴대폰에서는 화면 전체를 덮는 목록. Escape나 메뉴 안 링크를 누르면 닫힌다. */
   var toggle = doc.querySelector('.menu-toggle');
   var nav = doc.getElementById('site-nav');
   if (toggle && nav) {
-    toggle.addEventListener('click', function () {
-      var open = nav.classList.toggle('open');
+    var setMenu = function (open) {
+      nav.classList.toggle('open', open);
+      root.classList.toggle('menu-open', open);
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기');
       toggle.textContent = open ? '닫기' : '메뉴';
+    };
+    toggle.addEventListener('click', function () { setMenu(!nav.classList.contains('open')); });
+    doc.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && nav.classList.contains('open')) { setMenu(false); toggle.focus(); }
     });
+    nav.addEventListener('click', function (e) { if (e.target.closest && e.target.closest('a')) { setMenu(false); } });
   }
 
-  /* 머리띠: 조금 내려가면 바탕을 채운다. */
+  /* 머리 바탕: 병풍 폭 위(k-home, k-game)에서는 투명, 한지 구간에 들어서면 먹 바탕 띠(solid).
+     한지 읽는 페이지(k-paper)는 CSS가 처음부터 채운다. */
   var header = doc.querySelector('.site-header');
-  if (header) {
-    var onScroll = function () { header.classList.toggle('scrolled', window.scrollY > 40); };
+  var firstPaper = doc.querySelector('.paper');
+  var overPanels = doc.body.classList.contains('k-home') || doc.body.classList.contains('k-game');
+  if (header && firstPaper && overPanels) {
+    var onScroll = function () { header.classList.toggle('solid', firstPaper.getBoundingClientRect().top <= header.offsetHeight); };
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
     onScroll();
   }
 
@@ -55,23 +67,39 @@
     t.textContent = days === 0 ? '오늘' : (days === 1 ? '어제' : days + '일 전');
   });
 
-  /* 올라오며 나타나기. 이미 화면에 있는 것은 숨기지 않는다(첫 화면이 깜박이지 않게). */
-  var revealTargets = all('.game-card, .log-list li, .now-block, .follow-box');
-  if (motionOK && canObserve) {
-    var revealer = new IntersectionObserver(function (entries) {
+  /* 병풍 폭: 화면에 반 넘게 들어오면 in(세로 제목과 도장이 찍히듯 나타남, 한 번만)을 붙이고 넘김 점을 옮긴다.
+     움직임을 줄이거나 지켜볼 수 없으면 모든 폭을 처음부터 in으로 둔다. */
+  var panels = all('.panel');
+  var dots = all('.dots a');
+  var markDot = function (panel) {
+    dots.forEach(function (d) { d.classList.toggle('on', d.getAttribute('href') === '#' + panel.id); });
+  };
+  if (canObserve && panels.length) {
+    var panelWatcher = new IntersectionObserver(function (entries) {
       entries.forEach(function (entry) {
-        if (entry.isIntersecting) { entry.target.classList.add('in'); revealer.unobserve(entry.target); }
+        if (!entry.isIntersecting) { return; }
+        entry.target.classList.add('in');
+        markDot(entry.target);
       });
-    }, { threshold: 0.15 });
-    revealTargets.forEach(function (el) {
-      var box = el.getBoundingClientRect();
-      if (box.top < window.innerHeight && box.left < window.innerWidth) { return; }
-      el.classList.add('reveal');
-      revealer.observe(el);
+    }, { threshold: 0.5 });
+    panels.forEach(function (p) {
+      if (!motionOK) { p.classList.add('in'); }
+      panelWatcher.observe(p);
     });
+    /* 한지 마무리 폭에 들어서면 점을 모두 끈다 */
+    if (firstPaper && dots.length) {
+      new IntersectionObserver(function (entries) {
+        if (entries[0].isIntersecting && entries[0].boundingClientRect.top < window.innerHeight * 0.5) {
+          dots.forEach(function (d) { d.classList.remove('on'); });
+        }
+      }, { threshold: [0, 0.2, 0.5] }).observe(firstPaper);
+    }
+  } else {
+    panels.forEach(function (p) { p.classList.add('in'); });
   }
+  if (dots.length && panels.length && !doc.querySelector('.dots a.on')) { dots[0].classList.add('on'); }
 
-  /* 영상: 카드 미리보기(.card-video)와 게임 화면(.play-video).
+  /* 영상: 폭에 끼운 미리보기(.card-video)와 게임 화면(.play-video).
      처음에는 포스터 그림만 있다. 화면에 반 넘게 들어온 영상 가운데 가장 많이 보이는 하나만 받아서 재생한다. */
   var cardVideos = all('video.card-video[data-src]');
   var playVideos = all('video.play-video');
@@ -85,7 +113,7 @@
       var next = best ? best.video : null;
       if (current && current !== next) { current.pause(); }
       current = next;
-      if (!next || pausedByUser.indexOf(next) !== -1) { return; }
+      if (!next || doc.hidden || pausedByUser.indexOf(next) !== -1) { return; }
       if (!next.getAttribute('src') && next.dataset.src) { next.src = next.dataset.src; }
       var started = next.play();
       if (started && started.catch) { started.catch(function () { /* 자동 재생이 막힌 브라우저: 포스터 그대로 */ }); }
@@ -99,6 +127,8 @@
     var startWatching = function () {
       cardVideos.concat(playVideos).forEach(function (v) { seen.push({ video: v, ratio: 0 }); watcher.observe(v); });
     };
+    /* 다른 탭으로 가면 멈추고, 돌아오면 다시 고른다. */
+    doc.addEventListener('visibilitychange', function () { if (doc.hidden) { if (current) { current.pause(); } } else { pick(); } });
     /* 게임 화면 영상: 저절로 재생하므로 조작 막대를 떼고, 누르면 멈춤/재생. */
     playVideos.forEach(function (v) {
       v.controls = false;
@@ -115,7 +145,7 @@
     /* 첫 화면 그리기와 겨루지 않게, 페이지가 다 뜬 뒤에 지켜보기 시작한다. */
     if (doc.readyState === 'complete') { startWatching(); } else { window.addEventListener('load', startWatching); }
   }
-  /* 움직임 줄이기·데이터 절약: 카드 영상은 포스터 그대로(카드 누름은 링크 그대로),
+  /* 움직임 줄이기·데이터 절약: 폭의 미리보기 영상은 받지 않고(포스터 그대로),
      게임 화면 영상은 조작 막대(HTML의 controls)를 눌러야만 받아서 재생한다. */
 
   /* 개발 중 화면 여러 장을 천천히 겹쳐 바꾼다. 움직임을 줄이면 첫 장만. */

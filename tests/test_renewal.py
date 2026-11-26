@@ -185,7 +185,7 @@ class GamePageTest(SiteTest):
         start = page.index('<section class="now-block">')
         block = page[start:page.index("</section>", start)]
         self.assertIn("지금 어디까지", block)
-        self.assertIn('<li><time datetime="2026-11-07">2026-11-07</time> 사례 7개 범위를 조사했다.</li>', block)
+        self.assertIn('<time class="seal seal-date" datetime="2026-11-07"><b>11.07</b><i>2026</i></time><span class="t">사례 7개 범위를 조사했다.</span>', block)
         self.assertLess(block.index("2026-11-07"), block.index("2026-11-06"))
         self.assertIn("약속 아님", block)
         # 옛 '다음에 손댈 것' 칸은 이 칸으로 바뀌었다
@@ -217,8 +217,10 @@ class GamePageTest(SiteTest):
         def card(root):
             self.games(root, lambda g: g["curvy"].update({"card_image": "static/art/cards/curvy-800.webp", "platform": "2D 도트"}))
         page = self.read(self.build(card), "games/curvy/index.html")
-        self.assertIn('<span class="tag dev">개발 중</span><span class="tag">2D 도트</span>', page)
-        self.assertIn(f'<figure class="game-shot"><img src="{B}/static/art/cards/curvy-800.webp" alt="" loading="eager"></figure>', page)
+        # 2026-11-26 대개편: 상태는 도장, 플랫폼과 카드 그림은 맨 위 폭 안에.
+        self.assertIn('<span class="seal">개발 중</span>', page)
+        self.assertIn("<small>2D 도트</small>", page)
+        self.assertIn(f'<img class="panel-pic" src="{B}/static/art/cards/curvy-800.webp" alt="" loading="eager" fetchpriority="high">', page)
 
 
 class LogPageTest(SiteTest):
@@ -243,18 +245,17 @@ class HomeTest(SiteTest):
         home = self.read(self.build(full), "index.html")
         self.assertIn('<p class="live">', home)
         self.assertIn('<time data-rel datetime="2026-11-07">', home)
-        start = home.index('<div class="rail')
-        rail = home[start:home.index("</section>", start)]
+        # 2026-11-26 대개편: 카드 줄이 병풍 폭으로 바뀌었다. 누름 집계 이름은 그대로.
+        start = home.index('<div class="byeongpung">')
+        panels = home[start:home.index('<section class="end paper">')]
         for slug in ("tamna", "curvy", "gohyang"):
-            self.assertIn(f'data-goatcounter-click="card-{slug}"', rail)
+            self.assertIn(f'data-goatcounter-click="card-{slug}"', panels)
         self.assertIn("다음 소식 받기", home)
         self.assertIn('data-goatcounter-click="tester-tamna"', home)
         # 응원은 한 줄만. 옛 후원 상자는 없다.
         self.assertEqual(home.count("개발 응원하기"), 1)
         self.assertNotIn("만드는 시간을 응원해 주세요", home)
         self.assertNotIn("후원 방법 보기", home)
-        # 살아 있음 줄은 카드보다 위
-        self.assertLess(home.index('<p class="live">'), start)
 
     def test_home_without_threads_or_support_hides_follow_and_cheer(self):
         home = self.read(self.build(), "index.html")
@@ -282,7 +283,7 @@ class MotionTest(SiteTest):
             html = p.read_text(encoding="utf-8")
             self.assertIn(f'<script src="{B}/static/site.js" defer></script>', html, p)
             # 본문보다 먼저 html.js를 붙인다(본문이 그려지기 전에 CSS가 알 수 있게).
-            self.assertIn("<body>\n<script>document.documentElement.classList.add('js')</script>", html.replace("\r\n", "\n"), p)
+            self.assertIn("<body>\n<script>document.documentElement.classList.add('js')</script>", re.sub(r'<body class="k-[a-z]+">', "<body>", html.replace("\r\n", "\n")), p)
             self.assertNotIn("addEventListener", html, p)  # 인라인 동작 스크립트는 site.js로 옮겼다
         self.assertTrue((out / "static/site.js").exists())
 
@@ -314,30 +315,24 @@ class ThumbTest(SiteTest):
         path = root / "content/log/2026-11-06.md"
         path.write_text(path.read_text(encoding="utf-8").replace("title:", "media: media/log/a.jpg\ntitle:", 1), encoding="utf-8")
 
-    def test_list_thumbnail_is_a_small_copy_not_the_original(self):
-        out = self.build(self.still)
-        for rel in ("index.html", "games/tamna/index.html"):
-            page = self.read(out, rel)
-            self.assertIn(f'<img class="thumb" src="{B}/thumbs/log/a.jpg" alt="" loading="lazy" width="176" height="124">', page, rel)
-            self.assertNotIn(f'class="thumb" src="{B}/media/', page, rel)
-        from PIL import Image
-        with Image.open(out / "thumbs/log/a.jpg") as small:
-            self.assertEqual(small.size, (176, 124))
-        self.assertLess((out / "thumbs/log/a.jpg").stat().st_size, 20_000)
-        # 기록 글 본문은 원본 그림 그대로
-        self.assertIn(f'src="{B}/media/log/a.jpg"', self.read(out, "log/tamna/2026-11-06/index.html"))
+    def test_gif_gets_no_card_picture(self):
+        home = self.read(self.build(), "index.html")  # 픽스처의 가장 최근 기록(11-07)은 GIF
+        self.assertNotIn("thumbs/", home)
 
-    def test_gif_and_missing_picture_get_no_thumbnail(self):
-        page = self.read(self.build(), "games/tamna/index.html")  # 픽스처의 11-07 기록은 GIF
-        self.assertNotIn('class="thumb"', page)
-
-    def test_without_pillow_lists_simply_have_no_pictures(self):
+    def test_without_pillow_the_latest_card_simply_has_no_picture(self):
         import tools.sitegen.thumbs as thumbs
         original = thumbs.make_thumb
-        thumbs.make_thumb = lambda src, dst: False
+        thumbs.make_thumb = lambda src, dst, size=None: False
         self.addCleanup(setattr, thumbs, "make_thumb", original)
-        out = self.build(self.still)
-        self.assertNotIn('class="thumb"', self.read(out, "index.html"))
+
+        def latest_still(root):
+            self.still(root)
+            (root / "content/log/2026-11-07.md").unlink()
+            shutil.rmtree(root / "content/log/curvy")
+        out = self.build(latest_still)
+        home = self.read(out, "index.html")
+        self.assertIn('class="latest"', home)
+        self.assertNotIn("thumbs/", home)
         self.assertFalse((out / "thumbs").exists())
 
 
@@ -368,7 +363,7 @@ class ReviewFixTest(SiteTest):
         for rel in ("index.html", "games/tamna/index.html"):
             page = self.read(out, rel)
             self.assertEqual(page.count(f'<a class="btn" href="{B}/games/tamna/together/"'), page.count('data-goatcounter-click="tester-tamna"'), rel)
-            self.assertGreaterEqual(page.count('data-goatcounter-click="tester-tamna"'), 2, rel)
+            self.assertGreaterEqual(page.count('data-goatcounter-click="tester-tamna"'), 1, rel)
 
     def test_phone_menu_is_hidden_only_when_script_can_open_it(self):
         css = Path("static/style.css").read_text(encoding="utf-8")

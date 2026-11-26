@@ -45,7 +45,8 @@ class BuildTest(unittest.TestCase):
         self.assertNotIn("사이트 생성기 뼈대.", html)
         self.assertIn("사이트 생성기 뼈대.", (self.out / "log/tamna/2026-11-07/index.html").read_text(encoding="utf-8"))
         self.assertIn("1990년대 후반 한국 2D 온라인 RPG들에서 영감을 받았고", html)
-        self.assertIn("실제 플레이 화면(개발 중)", html)
+        # 2026-11-26 대개편: 큰 첫 화면 그림(hero_media) 대신 게임의 병풍 폭이 맨 위에 온다.
+        self.assertIn('<h1 class="vt" aria-label="탐라(가제)">', html)
 
     def test_page_tokens_are_replaced(self):
         about = (self.out / "about/index.html").read_text(encoding="utf-8")
@@ -94,8 +95,9 @@ class HeroMobileTest(unittest.TestCase):
             (root / "data" / "games.json").write_text(json.dumps(games, ensure_ascii=False), encoding="utf-8")
             out = Path(tmp) / "out"; build_site(root, out, base="/tamna-site")
             html = (out / "games/tamna/index.html").read_text(encoding="utf-8")
-            self.assertIn('<picture><source media="(max-width: 720px)" srcset="/tamna-site/static/art/key-hero-m-1000.webp">', html)
-            self.assertIn('src="/tamna-site/static/art/key-hero-2400.webp"', html)
+            # 2026-11-26 대개편: 세로 화면용 그림(hero_media_mobile)이 병풍 폭을 가득 채운다. 2400px 그림은 받지 않는다.
+            self.assertIn('<img class="panel-pic" src="/tamna-site/static/art/key-hero-m-1000.webp" alt="" loading="eager" fetchpriority="high">', html)
+            self.assertNotIn("key-hero-2400.webp", html)
             self.assertIn('loading="eager"', html)
 
 
@@ -109,18 +111,19 @@ class IconTest(unittest.TestCase):
 
     def test_pages_sections_nav_and_hero_carry_minhwa_icons_and_logo(self):
         about = (self.out / "about/index.html").read_text(encoding="utf-8")
-        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/hareubang.webp" alt="">', about)
+        # 2026-11-26 대개편: 제목 옆 민화 아이콘과 탐라 로고 그림은 빼고, 제목은 바탕체 글자로 쓴다.
+        self.assertNotIn('class="ico"', about[about.index("<main>"):about.index("</main>")].split("</h1>")[0])
         tamna = (self.out / "games/tamna/index.html").read_text(encoding="utf-8")
-        self.assertIn('<p class="eyebrow"><img class="ico" src="/tamna-site/static/icons/sun.webp" alt="">지금 게임 화면', tamna)
-        self.assertIn('<img class="logo-img" src="/tamna-site/static/art/logo-cream-900.webp" alt="탐라"', tamna)
+        self.assertIn('<h1 class="vt" aria-label="탐라(가제)">', tamna)
         index = (self.out / "index.html").read_text(encoding="utf-8")
         # 머리 로고는 스튜디오 글자 로고, 메뉴는 글자만.
         self.assertIn('<a class="brand" href="/tamna-site/"><img class="brand-logo" src="/tamna-site/static/brand/logo-horizontal.svg"', index)
         self.assertIn('<a href="/tamna-site/games/">게임</a>', index)
         self.assertIn('<a href="/tamna-site/log/">개발 기록</a>', index)
-        self.assertIn('<p class="footer-nav"><a href="/tamna-site/monthly/">이달의 정리</a></p>', index)
+        footer = index[index.index("<footer"):index.index("</footer>")]
+        self.assertIn('<a href="/tamna-site/monthly/">이달의 정리</a>', footer)
         log_index = (self.out / "log/index.html").read_text(encoding="utf-8")
-        self.assertIn('<h1><img class="ico" src="/tamna-site/static/icons/brush.webp" alt="">개발 기록</h1>', log_index)
+        self.assertIn("<h1>개발 기록</h1>", log_index)
 
 
 class SharePreviewAndHomeTest(unittest.TestCase):
@@ -175,21 +178,16 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         self.assertIn('<video class="play-video" src="/tamna-site/media/clip.mp4" muted loop playsinline preload="none" controls', html)
         self.assertIn("<figcaption>실제 게임 화면(개발 중)</figcaption>", html)
 
-    def test_sub_pages_get_an_art_band_and_home_does_not(self):
+    def test_no_page_carries_the_old_art_band(self):
+        # 2026-11-26 대개편: 하위 페이지 머리의 탐라 그림 띠(page-band)를 없앴다. 탐라 그림은 탐라 페이지 안에만 있다.
         out = self.build()
-        self.assertNotIn('class="page-band"', (out / "index.html").read_text(encoding="utf-8"))
-        # 스튜디오 공통 페이지와 다른 게임 기록에는 탐라 그림 띠를 두지 않는다.
-        self.assertNotIn('class="page-band"', (out / "about/index.html").read_text(encoding="utf-8"))
-        self.assertNotIn('class="page-band"', (out / "log/curvy/2026-11-07/index.html").read_text(encoding="utf-8"))
+        for rel in ("index.html", "about/index.html", "log/curvy/2026-11-07/index.html", "log/tamna/2026-11-07/index.html"):
+            html = (out / rel).read_text(encoding="utf-8")
+            self.assertNotIn("page-band", html, rel)
+            self.assertNotIn("background-image", html, rel)
         game = (out / "games/tamna/index.html").read_text(encoding="utf-8")
-        self.assertIn("static/art/scene-hunt-1400.webp", game)
-        log = (out / "log/tamna/2026-11-07/index.html").read_text(encoding="utf-8")
-        self.assertIn("static/art/key-sea-1400.webp", log)
-        self.assertIn('aria-hidden="true"', log)
-        # 그림 띠가 가리키는 파일이 실제로 있어야 한다.
-        for html in (game, log):
-            src = html.split("background-image:url('/tamna-site/")[1].split("'")[0]
-            self.assertTrue((out / src).exists(), src)
+        src = game.split('static/art/scene-hunt-1400.webp')[0].rsplit('src="/tamna-site/', 1)[1] + "static/art/scene-hunt-1400.webp"
+        self.assertTrue((out / src).exists(), src)
 
     def test_analytics_tag_only_with_a_valid_code(self):
         # 집계 스크립트가 없어야 한다. 카드의 data-goatcounter-click 속성은 스크립트 없이는 아무 일도 하지 않는다.

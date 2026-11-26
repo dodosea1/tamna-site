@@ -17,9 +17,11 @@ from pathlib import Path
 from tools.sitegen.donate import donate_block, is_direct, shows_ctee
 from tools.sitegen import thumbs
 from tools.sitegen.content import LogEntry, Monthly, bullet_items, extract_section, load_logs, load_monthly, load_pages
+from tools.sitegen.fonts import serif_chars, title_font_link
 from tools.sitegen.feed import FeedItem, build_rss
 from tools.sitegen.render import fill, md_to_html, render_template
-from tools.sitegen.studio import GAME_STATUS, cheer_line, follow_block, game_card, live_line, now_lines, other_games_rail
+from tools.sitegen.studio import (GAME_STATUS, cheer_line, date_seal, follow_block, game_card, latest_card, live_line, now_lines,
+                                  other_games_rail, panel, patch_list)
 from tools.sitegen.tables import ai_table, feedback_table, roadmap_section, support_section
 
 
@@ -92,21 +94,6 @@ def _play_html(base: str, site: dict, root: Path | None = None) -> str:
     return f'<figure class="play">{tag}<figcaption>{label}</figcaption></figure>'
 
 
-# 하위 페이지 머리 그림 띠. 페이지 성격에 맞는 그림을 고르고, 없으면 키아트.
-# 스튜디오 공통 페이지는 띠를 두지 않는다(탐라 그림이라). 탐라 페이지와 탐라 기록에만 둔다.
-PAGE_BANDS = {"games/tamna/together": "scene-village", "games/tamna/roadmap": "scene-village", "log/tamna": "key-sea"}
-# 그림마다 띠에 보일 부분(세로 위치). 하늘만 보이지 않게 아래쪽 풍경을 잡는다.
-BAND_FOCUS = {"scene-hunt": "40%", "scene-village": "35%", "key-sea": "88%", "key-hero": "68%"}
-
-
-def _band_html(base: str, path: str) -> str:
-    key = path.strip("/")
-    art = PAGE_BANDS.get(key) or (PAGE_BANDS["log/tamna"] if key.startswith("log/tamna/") else "")
-    if not art:
-        return ""
-    return f'<div class="page-band" style="background-image:url(\'{base}/static/art/{art}-1400.webp\');background-position:center {BAND_FOCUS.get(art, "40%")}" aria-hidden="true"></div>\n'
-
-
 def _article_ld(title: str, published: str, url: str, image: str, site: dict) -> str:
     """기록 글의 구조화 데이터(schema.org Article). 검색엔진이 날짜·제목·작성자를 읽게 한다."""
     data = {
@@ -129,19 +116,6 @@ PAGE_ICONS = {"about": "hareubang", "game": "peony", "roadmap": "road", "feedbac
 def _icon(base: str, name: str, cls: str = "ico") -> str:
     """민화풍 아이콘 한 개. 장식이라 alt는 비운다."""
     return f'<img class="{cls}" src="{base}/static/icons/{name}.webp" alt="">' if name else ""
-
-
-def _hero_html(base: str, site: dict) -> str:
-    """첫 화면 그림. 즉시 로드하고, 세로 화면용 그림이 있으면 <picture>로 바꿔 끼운다."""
-    if not site.get("hero_media"):
-        return ""
-    html = _media_html(base, site["hero_media"], site.get("hero_label", "")).replace('loading="lazy"', 'loading="eager" fetchpriority="high"')
-    mobile = site.get("hero_media_mobile")
-    if mobile and "<img " in html:
-        img_start = html.index("<img "); img_end = html.index(">", img_start) + 1
-        source = f'<picture><source media="(max-width: 720px)" srcset="{base}/{mobile}">'
-        html = html[:img_start] + source + html[img_start:img_end] + "</picture>" + html[img_end:]
-    return html
 
 
 def _analytics(site: dict) -> str:
@@ -183,17 +157,6 @@ def _excerpt(log: LogEntry) -> str:
     return items[0] if items else ""
 
 
-def _log_link(base: str, log: LogEntry, game_names: dict[str, str] | None = None, *, thumb: str = "", excerpt: bool = True) -> str:
-    """기록 목록의 한 줄. thumb(작은 그림의 사이트 안 경로)이 있으면 붙인다."""
-    tag = f'<span class="g">{escape(game_names[log.game])}</span>' if game_names and log.game in game_names else ""
-    w, h = thumbs.THUMB_SIZE
-    pic = f'<img class="thumb" src="{base}/{escape(thumb)}" alt="" loading="lazy" width="{w}" height="{h}">' if thumb else ""
-    cls = ' class="has-thumb"' if thumb else ""
-    x = f'<span class="x">{escape(_excerpt(log))}</span>' if excerpt else ""
-    return (f'<li><a{cls} href="{base}/{log.path}"><span class="d">{escape(log.date)}</span>'
-            f'<span class="t">{tag}{escape(log.title)}</span>{x}{pic}</a></li>')
-
-
 def _first_sentence(text: str) -> str:
     """긴 항목의 첫 문장만. 문장 끝(. ! ? 뒤 공백)이 없으면 그대로."""
     m = re.match(r"(.+?[.!?])\s", text)
@@ -204,8 +167,8 @@ def _now_block(lines: list[tuple[str, str]]) -> str:
     """'지금 어디까지' 칸. 근거는 최근 공개 기록의 '한 일'이고 날짜를 붙인다. 줄이 없으면 칸을 두지 않는다."""
     if not lines:
         return ""
-    items = "".join(f'<li><time datetime="{escape(d)}">{escape(d)}</time> {escape(_first_sentence(text))}</li>' for d, text in lines)
-    return f'<section class="now-block"><p class="eyebrow">지금 어디까지</p><ul>{items}</ul><p class="muted small">개발 기록 기준 · 약속 아님</p></section>'
+    items = "".join(f'<li>{date_seal(d)}<span class="t">{escape(_first_sentence(text))}</span></li>' for d, text in lines)
+    return f'<section class="now-block"><p class="eyebrow">지금 어디까지</p><ul class="patch notes">{items}</ul><p class="muted small">개발 기록 기준 · 약속 아님</p></section>'
 
 
 def _slides_html(base: str, g: dict) -> str:
@@ -214,15 +177,7 @@ def _slides_html(base: str, g: dict) -> str:
     if not slides:
         return ""
     imgs = "".join(f'<img src="{base}/{escape(s)}" alt="" loading="{"eager" if i == 0 else "lazy"}"{" class=\"on\"" if i == 0 else ""}>' for i, s in enumerate(slides))
-    return f'<figure class="game-shot"><div class="slides" data-slides>{imgs}</div><figcaption>개발 중 화면 · 바뀔 수 있습니다</figcaption></figure>'
-
-
-def _game_tags(g: dict) -> str:
-    status = g.get("status", "개발 중")
-    tags = f'<span class="tag {GAME_STATUS.get(status, "dev")}">{escape(status)}</span>'
-    if g.get("platform"):
-        tags += f'<span class="tag">{escape(g["platform"])}</span>'
-    return f'<p class="tags">{tags}</p>'
+    return f'<figure class="plate"><div class="slides" data-slides>{imgs}</div><figcaption>개발 중 화면 · 바뀔 수 있습니다</figcaption></figure>'
 
 
 def _redirect_html(base: str, site_url: str, target: str) -> str:
@@ -239,7 +194,7 @@ def _redirect_html(base: str, site_url: str, target: str) -> str:
 
 
 def _monthly_link(base: str, m: Monthly) -> str:
-    return f'<li><a href="{base}/monthly/{m.month}/"><span class="d">{escape(m.month)}</span><span class="t">{escape(m.title)}</span></a></li>'
+    return f'<li><a href="{base}/monthly/{m.month}/"><span class="seal seal-date"><b>{escape(m.month[5:])}월</b><i>{escape(m.month[:4])}</i></span><span class="t">{escape(m.title)}</span></a></li>'
 
 
 def _guard_out(root: Path, out: Path) -> None:
@@ -336,6 +291,8 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "nav": nav,
         "footer_links": f'<a href="{base}/privacy/">개인정보 처리방침</a> · ' if has_privacy else "",
         "footer_nav": footer_nav,
+        # 꼬리에는 위쪽 메뉴 링크도 모두 둔다(스크립트가 꺼진 휴대폰에서는 메뉴를 열 수 없다).
+        "footer_menu": nav + "".join(f'<a href="{base}/{slug}/">{escape(titles[slug])}</a>' for slug in footer_slugs),
         "header_follow": f'<a class="follow" href="{escape(threads_url)}" rel="noopener">스레드 팔로우</a>' if threads_url else "",
         "site_title": site["title"],
         "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og-studio.jpg",
@@ -364,7 +321,9 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     for name in ("sun", "brush", "moon", "peony", "hareubang", "bell", "letter", "road", "knot", "cups", "pouch", "magpie"):
         common[f"icon_{name}"] = _icon(base, name)
 
-    def page_html(title: str, content: str, page_title: str = "", *, path: str = "", description: str = "", image: str = "", og_type: str = "website", published: str = "") -> str:
+    def page_html(title: str, content: str, page_title: str = "", *, path: str = "", description: str = "", image: str = "", og_type: str = "website", published: str = "",
+                  kind: str = "paper", dots: str = "") -> str:
+        """kind: home(병풍 첫 화면) · game(맨 위가 폭) · paper(한지 읽는 페이지)."""
         page_title = page_title or f"{title} · {site['title']}"
         og_image = f"{site_url}/{image}" if image else common["og_image"]
         meta = {
@@ -373,9 +332,13 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             "og_type": og_type,
             "og_image": og_image,
             "published_meta": (f'<meta property="article:published_time" content="{escape(published)}">\n' + _article_ld(title, published, f"{site_url}/{path}", og_image, site)) if published else "",
-            "band": _band_html(base, path),
+            "kind": kind,
+            "dots": dots,
+            "title_font": "<!--title-font-->",
         }
-        return render_template("base.html", {**common, **meta, "title": title, "page_title": page_title, "content": content}, templates)
+        html = render_template("base.html", {**common, **meta, "title": title, "page_title": page_title, "content": content}, templates)
+        # 제목 글꼴은 다 만든 페이지에서 제목에 쓰인 글자를 모아, 그 글자만 받는다.
+        return html.replace("<!--title-font-->", title_font_link(serif_chars(html)), 1)
 
     if out.exists():
         shutil.rmtree(out)
@@ -388,19 +351,15 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         written.add(path)
         _write(out / path / "index.html", html)
 
-    thumb_made: dict[str, str] = {}
-
-    def thumb_for(log: LogEntry) -> str:
-        """기록의 멈춘 그림(GIF 제외)을 줄여 thumbs/ 아래에 두고 그 경로를 돌려준다. 만들 수 없으면 ''."""
+    def card_picture(log: LogEntry) -> str:
+        """기록의 멈춘 그림(GIF 제외)을 640×360으로 줄여 thumbs/card/ 아래에 두고 그 경로를 돌려준다. 만들 수 없으면 ''."""
         still = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "")
         parts = still.split("/")
         if not still or parts[0] != "media" or ".." in parts:
             return ""
-        if still not in thumb_made:
-            rel = "/".join(["thumbs", *parts[1:]])
-            rel = rel[: rel.rindex(".")] + ".jpg"
-            thumb_made[still] = rel if thumbs.make_thumb(root / still, out / rel) else ""
-        return thumb_made[still]
+        rel = "/".join(["thumbs", "card", *parts[1:]])
+        rel = rel[: rel.rindex(".")] + ".jpg"
+        return rel if thumbs.make_thumb(root / still, out / rel, thumbs.CARD_SIZE) else ""
 
     cards = "".join(game_card(base, g) for g in games)
     has_tester = any(p.slug == "together" for p in game_pages.get("tamna", []))
@@ -408,21 +367,22 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     # 스튜디오 첫 화면
     # 다음 소식: 테스트 알림은 탐라 것(같이하기 페이지가 있을 때), 스레드는 스튜디오 계정.
     home_follow = (follow_block(base, tamna, threads_url, has_tester) if tamna else "") + cheer_line(base, "support" in titles)
+    latest = logs[0] if logs else None
+    recent = patch_list(base, logs[1:4], game_names)
     index_ctx = {
         **common,
-        "cards": cards,
-        "latest_logs": "".join(_log_link(base, log, game_names, thumb=thumb_for(log)) for log in logs[:6]) or "<li>아직 없습니다</li>",
+        # 게임마다 병풍 한 폭. games.json 순서. 첫 폭 그림만 바로 받는다.
+        "panels": "".join(panel(base, g, eager=(i == 0)) for i, g in enumerate(games)),
         # 기록 날짜는 한국 날짜다. CI는 UTC라서 한국 시간으로 오늘을 잡는다.
         "live": live_line(logs, datetime.now(timezone(timedelta(hours=9))).date()),
-        # 후원은 상자 대신 아래쪽 한 줄만 둔다(설계 5-5). 둘 다 없으면 구역을 두지 않는다.
-        "home_follow": f'<section class="wrap home-follow">{home_follow}</section>' if home_follow else "",
-        "studio_boxes": "".join(box for slug, box in (
-            ("feedback", f'<div class="box"><p class="eyebrow">의견</p><p>어느 게임에 대한 의견인지 골라서 남길 수 있습니다.</p><a class="btn ghost small" href="{base}/feedback/">의견 보내기</a></div>'),
-        ) if slug in titles),
-        "hero_cta": (f'<a class="btn" href="{base}/games/tamna/together/" data-goatcounter-click="tester-tamna">탐라 테스터 신청</a>' if has_tester
-                     else f'<a class="btn" href="{base}/games/">게임 보기</a>'),
+        "latest": latest_card(base, latest, game_names[latest.game], card_picture(latest)) if latest else "",
+        # 카드로 보여 준 기록 다음 세 개. 기록이 없으면 칸을 통째로 숨긴다.
+        "patch": (f'<div class="recent"><p class="eyebrow">최근 기록</p>{recent}<a class="more" href="{base}/log/">전체 기록 보기</a></div>' if logs else ""),
+        # 후원은 한 줄만 둔다. 둘 다 없으면 칸을 두지 않는다.
+        "home_follow": f'<div class="home-follow">{home_follow}</div>' if home_follow else "",
     }
-    write_page("", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"]))
+    dots = '<nav class="dots" aria-label="게임">' + "".join(f'<a href="#p-{escape(g["slug"])}" aria-label="{escape(g["name"])}"></a>' for g in games) + "</nav>"
+    write_page("", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"], kind="home", dots=dots))
 
     # 게임 목록과 게임 페이지
     write_page("games/", page_html("게임", render_template("games_index.html", {**common, "cards": cards}, templates), path="games/",
@@ -437,43 +397,38 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         g_logs = [log for log in logs if log.game == slug]
         has_together = any(p.slug == "together" for p in subpages)
         subnav = " · ".join(f'<a href="{base}/games/{slug}/{p.slug}/">{escape(p.title)}</a>' for p in subpages if p.slug != "index")
-        # 맨 위 그림: 첫 화면 그림(hero_media) → 그림 넘김(slides) → 카드 그림 순. 아무것도 없으면 칸을 두지 않는다.
-        shot = _hero_html(base, g) or _slides_html(base, g)
-        if not shot and g.get("card_image"):
-            shot = f'<figure class="game-shot"><img src="{base}/{escape(g["card_image"])}" alt="" loading="eager"></figure>'
-        log_items = "".join(_log_link(base, log, thumb=thumb_for(log), excerpt=False) for log in g_logs[:3])
         log_more = f'<a class="more" href="{base}/log/{slug}/">{escape(g["name"])} 기록 전체</a>' if g_logs else ""
+        # 맨 위 폭의 단추: 같이하기 페이지가 있으면 테스터 단추, 없으면 단추 없음.
+        hero_cta = (f'<a class="btn" href="{base}/games/{slug}/together/" data-goatcounter-click="tester-{slug}">같이 사냥할 명단 올리기</a>' if has_together else "")
+        screen = _play_html(base, g, root) or _slides_html(base, g)
+        body = md_to_html(fill(index_page.body_md, gfill)) if index_page else ""
         ctx = {
             **gfill,
             "game_name": g["name"],
-            "game_summary": g.get("summary", ""),
             "game_slug": slug,
+            "panel": panel(base, g, heading="h1", eager=True, cta=hero_cta),
             # 근거가 없는 칸은 빈 문자열로 두어 통째로 숨긴다("준비 중"·"아직 없습니다"를 띄우지 않는다).
-            "game_tags": _game_tags(g),
-            "body": md_to_html(fill(index_page.body_md, gfill)) if index_page else "",
-            "subnav": f'<p class="muted small">{subnav}</p>' if subnav else "",
-            "latest_logs": log_items,
-            "log_more": log_more,
-            "logs_block": f'<h2>최근 기록</h2><ul class="log-list">{log_items}</ul>{log_more}' if g_logs else "",
             "now_block": _now_block(now_lines(g_logs)),
+            "screen": f'<section class="screen"><p class="eyebrow">실제 게임 화면</p>{screen}</section>' if screen else "",
+            "body": f'<article class="article">{body}</article>' if body else "",
+            "subnav": f'<p class="subnav">{subnav}</p>' if subnav else "",
+            "logs_block": f'<section class="recent"><p class="eyebrow">최근 기록</p>{patch_list(base, g_logs[:3])}{log_more}</section>' if g_logs else "",
             "follow": follow_block(base, g, threads_url, has_together),
             "other_games": other_games_rail(base, games, slug),
             "cheer": cheer_line(base, "support" in titles),
-            "hero": _hero_html(base, g),
-            "shot": shot,
-            "play": _play_html(base, g, root),
-            "hero_cta": (f'<a class="btn" href="{base}/games/{slug}/together/" data-goatcounter-click="tester-{slug}">같이 사냥할 명단 올리기</a>' if has_together
-                         else (f'<a class="btn" href="{base}/log/{slug}/">개발 기록 보기</a>' if g_logs else "")),
         }
+        # 한지 구역: 보여 줄 것이 하나도 없으면 구역 자체를 두지 않는다.
+        inner = "".join(ctx[k] for k in ("now_block", "screen", "body", "subnav", "logs_block", "follow"))
+        ctx["paper"] = f'<div class="paper"><div class="wrap narrow">{inner}</div></div>' if inner else ""
         tpl = f"game_{slug}.html" if (templates / f"game_{slug}.html").exists() else "game.html"
         description = g.get("summary", "") or (_first_paragraph(index_page.body_md) if index_page else "")
         tamna_og = "static/art/og.jpg" if slug == "tamna" else ""   # 탐라 페이지 공유 그림은 탐라 그림 그대로
-        write_page(f"games/{slug}/", page_html(g["name"], render_template(tpl, ctx, templates), path=f"games/{slug}/", description=description, image=tamna_og))
+        write_page(f"games/{slug}/", page_html(g["name"], render_template(tpl, ctx, templates), path=f"games/{slug}/", description=description, image=tamna_og, kind="game"))
         for p in subpages:
             if p.slug == "index":
                 continue
             body = md_to_html(fill(p.body_md, gfill))
-            content = render_template("page.html", {**gfill, "title": p.title, "body": body, "page_icon": _icon(base, PAGE_ICONS.get(p.slug, "")),
+            content = render_template("page.html", {**gfill, "title": p.title, "body": body,
                                                     "crumbs": f'<p class="crumbs"><a href="{base}/games/{slug}/">{escape(g["name"])}</a></p>'}, templates)
             write_page(f"games/{slug}/{p.slug}/", page_html(f"{p.title} · {g['name']}", content, path=f"games/{slug}/{p.slug}/",
                                                            description=_first_paragraph(fill(p.body_md, gfill))))
@@ -482,17 +437,17 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     for log in logs:
         media = "".join(_media_html(base, m) for m in log.media)
         body = md_to_html(log.body_md)
-        content = render_template("log.html", {**common, "date": log.date, "title": log.title, "media": media, "body": body,
+        content = render_template("log.html", {**common, "date": log.date, "date_seal": date_seal(log.date), "title": escape(log.title), "media": media, "body": body,
                                                "game_name": game_names[log.game], "game_slug": log.game,
                                                "other_games": other_games_rail(base, games, log.game)}, templates)
         image = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "")
         write_page(log.path, page_html(f"{log.date} {log.title}", content, path=log.path, description=_plain(_excerpt(log)), image=image, og_type="article", published=log.date))
 
     def groups_html(items: list[LogEntry], show_game: bool) -> str:
-        by_month: dict[str, list[str]] = {}
+        by_month: dict[str, list[LogEntry]] = {}
         for log in items:
-            by_month.setdefault(log.date[:7], []).append(_log_link(base, log, game_names if show_game else None))
-        return "".join(f"<h2>{m}</h2><ul>{''.join(links)}</ul>" for m, links in by_month.items()) or "<p>아직 없습니다.</p>"
+            by_month.setdefault(log.date[:7], []).append(log)
+        return "".join(f"<h2>{m}</h2>{patch_list(base, month_logs, game_names if show_game else None)}" for m, month_logs in by_month.items()) or "<p>아직 없습니다.</p>"
 
     write_page("log/", page_html("개발 기록", render_template("log_index.html", {**common, "heading": "개발 기록", "filters": _log_filters(base, games, logs, ""),
                                                                               "groups": groups_html(logs, True)}, templates), path="log/",
@@ -520,7 +475,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     # 스튜디오 공통 페이지
     for page in pages:
         body = md_to_html(fill(page.body_md, common))
-        content = render_template("page.html", {**common, "title": page.title, "body": body, "page_icon": _icon(base, PAGE_ICONS.get(page.slug, "")), "crumbs": ""}, templates)
+        content = render_template("page.html", {**common, "title": page.title, "body": body, "crumbs": ""}, templates)
         write_page(f"{page.slug}/", page_html(page.title, content, path=f"{page.slug}/", description=_first_paragraph(fill(page.body_md, common))))
 
     # 옛 주소 넘김 쪽. 탐라 옛 기록(/log/<날짜>/)은 자동, 나머지는 data/redirects.json(옛 경로 → 새 경로).

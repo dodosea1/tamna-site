@@ -107,5 +107,228 @@ class ListPiecesTest(unittest.TestCase):
         self.assertEqual(other_games_rail(B, [TAMNA], "tamna"), "")
 
 
+class TitleFontTest(SiteTest):
+    def test_serif_chars_collects_headings_and_marked_elements(self):
+        from tools.sitegen.fonts import serif_chars
+        html = '<h1>가나</h1><p>다</p><span class="seal x">라 a</span><h2>나<b>마</b></h2><img alt="바"><style>.vt{}</style>'
+        self.assertEqual(serif_chars(html), "a가나라마")
+        self.assertEqual(serif_chars("<p>글</p>"), "")
+        # 닫지 않는 태그(img, br)가 끼어도 범위가 어긋나지 않는다
+        self.assertEqual(serif_chars('<h2>가<br>나</h2><p>다</p>'), "가나")
+
+    def test_title_font_link_encodes_only_needed_chars(self):
+        from tools.sitegen.fonts import title_font_link
+        html = title_font_link("a가")
+        self.assertIn("https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&amp;display=swap&amp;text=a%EA%B0%80", html)
+        self.assertIn('media="print"', html)
+        self.assertIn("<noscript><link", html)
+
+    def test_title_font_link_is_dropped_when_too_many_chars(self):
+        from tools.sitegen.fonts import MAX_FONT_CHARS, title_font_link
+        self.assertEqual(MAX_FONT_CHARS, 600)
+        self.assertEqual(title_font_link("가" * 601), "")
+        self.assertNotEqual(title_font_link("가" * 600), "")
+        self.assertEqual(title_font_link(""), "")
+
+    def test_every_page_asks_for_its_own_title_glyphs(self):
+        out = self.build()
+        page = self.read(out, "log/tamna/2026-11-07/index.html")
+        head = page[:page.index("</head>")]
+        found = re.search(r'fonts\.googleapis\.com/css2\?family=Gowun\+Batang:wght@700&amp;display=swap&amp;text=([^"]+)"', head)
+        self.assertIsNotNone(found)
+        glyphs = unquote(found.group(1))
+        for ch in "사이트설계와사례조사":
+            self.assertIn(ch, glyphs)
+        self.assertLess(len(glyphs), 200)
+        self.assertNotIn("fonts.googleapis.com", self.read(out, "log/2026-11-07/index.html"))  # 넘김 쪽
+
+
+def real_pages(out: Path) -> list[Path]:
+    """넘김 쪽을 뺀 실제 페이지."""
+    return [p for p in out.rglob("index.html") if 'http-equiv="refresh"' not in p.read_text(encoding="utf-8")]
+
+
+class FrameTest(SiteTest):
+    def test_body_kind_per_page(self):
+        out = self.build()
+        for rel, kind in (("index.html", "home"), ("games/tamna/index.html", "game"), ("games/curvy/index.html", "game"),
+                          ("about/index.html", "paper"), ("log/tamna/2026-11-07/index.html", "paper"), ("log/index.html", "paper"),
+                          ("games/index.html", "paper"), ("monthly/2026-10/index.html", "paper")):
+            self.assertIn(f'<body class="k-{kind}">', self.read(out, rel), rel)
+
+    def test_footer_has_every_menu_link(self):
+        out = self.build()
+        pages = real_pages(out)
+        self.assertGreater(len(pages), 8)
+        for p in pages:
+            html = p.read_text(encoding="utf-8")
+            footer = html[html.index("<footer"):html.index("</footer>")]
+            for href in ("/games/", "/log/", "/feedback/", "/about/", "/monthly/", "/feed.xml"):
+                self.assertIn(f'href="{B}{href}"', footer, f"{p}: {href}")
+            self.assertIn('<div class="obang" aria-hidden="true"></div>', footer, p)
+
+    def test_home_has_one_dot_per_game_and_others_have_none(self):
+        out = self.build()
+        home = self.read(out, "index.html")
+        start = home.index('<nav class="dots"')
+        dots = home[start:home.index("</nav>", start)]
+        self.assertEqual(dots.count("<a "), 3)
+        self.assertIn('<a href="#p-tamna" aria-label="탐라(가제)"></a>', dots)
+        for rel in ("about/index.html", "games/tamna/index.html", "log/index.html"):
+            self.assertNotIn('class="dots"', self.read(out, rel), rel)
+
+    def test_header_keeps_menu_button_and_nav_contract(self):
+        home = self.read(self.build(full), "index.html")
+        self.assertIn('<button class="menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">메뉴</button>', home)
+        nav = home[home.index('<nav class="site-nav" id="site-nav">'):home.index("</nav>", home.index('<nav class="site-nav"'))]
+        self.assertIn(f'<a href="{B}/games/">게임</a>', nav)
+        self.assertIn('rel="noopener">스레드 팔로우</a>', nav)
+
+    def test_site_js_has_no_reveal_and_handles_menu_and_panels(self):
+        js = Path("static/site.js").read_text(encoding="utf-8")
+        self.assertNotIn("reveal", js)
+        for needle in ("menu-open", "Escape", ".panel", "k-home", "solid"):
+            self.assertIn(needle, js)
+
+
+def between(html: str, start: str, end: str) -> str:
+    i = html.index(start)
+    return html[i:html.index(end, i)]
+
+
+class HomeTest(SiteTest):
+    def test_home_is_a_byeongpung_of_all_games(self):
+        home = self.read(self.build(full), "index.html")
+        self.assertEqual(home.count('<section class="panel '), 3)
+        self.assertLess(home.index('id="p-tamna"'), home.index('id="p-curvy"'))
+        self.assertLess(home.index('id="p-curvy"'), home.index('id="p-gohyang"'))
+        self.assertLessEqual(home.count('fetchpriority="high"'), 1)
+        self.assertLess(home.index('id="p-gohyang"'), home.index('<div class="obang" aria-hidden="true"></div>'))
+        self.assertLess(home.index('<div class="obang"'), home.index('<section class="end paper">'))
+        for slug in ("tamna", "curvy", "gohyang"):
+            self.assertIn(f'data-goatcounter-click="card-{slug}"', home)
+        for old in ("studio-hero", 'class="game-card"', 'class="box"', "log-list"):
+            self.assertNotIn(old, home)
+        self.assertEqual(home.count("<h1"), 1)
+
+    def test_home_end_shows_latest_card_patch_follow_cheer_once(self):
+        home = self.read(self.build(full), "index.html")
+        end = between(home, '<section class="end paper">', "</section>")
+        self.assertIn('<h1 class="sf">', end)
+        self.assertEqual(end.count('class="latest"'), 1)
+        self.assertIn(f'<a class="latest" href="{B}/log/tamna/2026-11-07/">', end)   # 같은 날이면 정렬 첫째
+        patch = between(end, '<ul class="patch">', "</ul>")
+        self.assertEqual(patch.count("<li>"), 2)
+        self.assertNotIn(f'href="{B}/log/tamna/2026-11-07/"', patch)   # 카드로 보여 준 기록은 목록에서 뺀다
+        self.assertIn(f'href="{B}/log/"', end)
+        self.assertIn("다음 소식 받기", end)
+        self.assertIn('data-goatcounter-click="tester-tamna"', end)
+        self.assertEqual(home.count("개발 응원하기"), 1)
+        self.assertIn('<p class="live">', end)
+        self.assertIn('class="summary-en"', end)
+
+    def test_home_end_hides_empty_log_parts(self):
+        def empty(root):
+            shutil.rmtree(root / "content/log")
+            (root / "content/log").mkdir()
+        home = self.read(self.build(empty), "index.html")
+        for gone in ('class="latest"', 'class="patch"', "아직 없습니다", 'class="live"', "전체 기록"):
+            self.assertNotIn(gone, home)
+        self.assertEqual(home.count('<section class="panel '), 3)
+
+    def test_home_latest_card_picture_is_a_small_copy(self):
+        def still(root):
+            from PIL import Image
+            Image.new("RGB", (1600, 900), (200, 120, 40)).save(root / "media/log/a.jpg", quality=95)
+            path = root / "content/log/2026-11-07.md"
+            text = path.read_text(encoding="utf-8")
+            path.write_text(text.replace("media: media/log/2026-11-07-hunter-sweep.gif", "media: media/log/a.jpg"), encoding="utf-8")
+        out = self.build(still)
+        self.assertIn(f'<img src="{B}/thumbs/card/log/a.jpg" alt="" loading="lazy" width="640" height="360">', self.read(out, "index.html"))
+        from PIL import Image
+        with Image.open(out / "thumbs/card/log/a.jpg") as small:
+            self.assertEqual(small.size, (640, 360))
+
+
+class GamePageTest(SiteTest):
+    def test_game_page_opens_with_its_own_panel(self):
+        out = self.build(full)
+        for slug, name in (("tamna", "탐라(가제)"), ("curvy", "curvy(가칭)")):
+            page = self.read(out, f"games/{slug}/index.html")
+            self.assertEqual(page.count('<section class="panel '), 1, slug)
+            self.assertIn(f'<h1 class="vt" aria-label="{name}">', page)
+            self.assertEqual(page.count("<h1"), 1, slug)
+            self.assertLess(page.index('<section class="panel '), page.index('class="paper"'), slug)
+            self.assertNotIn("이 게임 보기", page)
+
+    def test_game_page_order_and_single_cheer(self):
+        page = self.read(self.build(full), "games/tamna/index.html")
+        order = [page.index(s) for s in ("지금 어디까지", "다음 소식 받기", "ORN의 다른 게임", "개발 응원하기")]
+        self.assertEqual(order, sorted(order))
+        self.assertEqual(page.count("개발 응원하기"), 1)
+        panel_html = between(page, '<section class="panel ', "</section>")
+        self.assertIn('data-goatcounter-click="tester-tamna"', panel_html)
+        self.assertEqual(page.count('data-goatcounter-click="tester-tamna"'), 2)
+
+    def test_now_block_uses_date_seals(self):
+        page = self.read(self.build(), "games/tamna/index.html")
+        block = between(page, '<section class="now-block">', "</section>")
+        self.assertIn('<time class="seal seal-date" datetime="2026-11-07">', block)
+        self.assertIn("사례 7개 범위를 조사했다.", block)
+        self.assertIn("약속 아님", block)
+
+    def test_game_screen_section_only_when_there_is_a_screen(self):
+        self.assertNotIn("실제 게임 화면", self.read(self.build(), "games/curvy/index.html"))
+        pics = ["static/art/cards/curvy-800.webp", "static/art/cards/iyagi-800.webp"]
+        with_slides = self.read(self.build(lambda root: self.games(root, lambda g: g["curvy"].update({"slides": pics}))), "games/curvy/index.html")
+        self.assertIn("data-slides", with_slides)
+        self.assertIn("실제 게임 화면", with_slides)
+        with_clip = self.read(self.build(lambda root: self.games(root, lambda g: g["tamna"].update({"play_media": "media/clip.mp4", "play_label": "화면"}))), "games/tamna/index.html")
+        self.assertIn('class="play-video"', with_clip)
+        self.assertIn("실제 게임 화면", with_clip)
+
+    def test_game_logs_are_three_patch_rows(self):
+        page = self.read(self.build(), "games/tamna/index.html")
+        self.assertIn('<ul class="patch">', page)
+        self.assertIn(f'href="{B}/log/tamna/">', page)
+        self.assertNotIn("log-list", page)
+
+    def test_tamna_page_has_no_css_background_pictures(self):
+        page = self.read(self.build(), "games/tamna/index.html")
+        self.assertNotIn("background-image", page)
+        self.assertRegex(page, r'<img[^>]*src="/tamna-site/static/art/scene-hunt-1400\.webp"[^>]*loading="lazy"')
+        self.assertIn("1990년대 후반 한국 2D 온라인 RPG들에서 영감을 받았고", page)
+
+
+class ReadingPagesTest(SiteTest):
+    def test_log_article_head_has_seal_game_strip_and_title(self):
+        page = self.read(self.build(), "log/tamna/2026-11-07/index.html")
+        head = between(page, '<header class="log-head">', "</header>")
+        self.assertIn('<time class="seal seal-date" datetime="2026-11-07">', head)
+        self.assertIn(f'<a class="game-strip" href="{B}/log/tamna/">탐라(가제)</a>', head)
+        self.assertIn("<h1>사이트 설계와 사례 조사</h1>", head)
+        self.assertEqual(page.count("<h1"), 1)
+        self.assertLess(page.index("</article>"), page.index("ORN의 다른 게임"))
+        self.assertNotIn("page-band", page)
+
+    def test_log_lists_are_patch_notes(self):
+        out = self.build()
+        everything = self.read(out, "log/index.html")
+        self.assertIn('<ul class="patch">', everything)
+        self.assertIn('<time class="seal seal-date" datetime="2026-11-07">', everything)
+        self.assertIn('<span class="g">curvy(가칭)</span>', everything)
+        self.assertIn("<h2>2026-11</h2>", everything)
+        self.assertNotIn('<span class="d">', everything)
+        self.assertNotIn('<span class="g">', between(self.read(out, "log/curvy/index.html"), "<main>", "</main>"))
+
+    def test_every_plain_page_is_paper(self):
+        out = self.build()
+        for rel in ("about/index.html", "feedback/index.html", "monthly/index.html", "monthly/2026-10/index.html", "games/index.html", "log/index.html"):
+            main = between(self.read(out, rel), "<main>", "</main>")
+            self.assertIn('<div class="paper">', main, rel)
+            self.assertEqual(main.count("<h1"), 1, rel)
+            self.assertLess(main.index('<div class="paper">'), main.index("<h1"), rel)
+
+
 if __name__ == "__main__":
     unittest.main()
