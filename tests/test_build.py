@@ -198,4 +198,4 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         self.assertIn('<script data-goatcounter="https://tamna.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>', (out / "games/tamna/index.html").read_text(encoding="utf-8"))
         bad = self.build(lambda s: s.update(goatcounter_code='x" onload="alert(1)'))
         self.assertNotIn("gc.zgo.at", (bad / "index.html").read_text(encoding="utf-8"))
-        self.assertNotIn("onload", (bad / "index.html").read_text(encoding="utf-8"))
+        self.assertNotIn("alert(1)", (bad / "index.html").read_text(encoding="utf-8"))

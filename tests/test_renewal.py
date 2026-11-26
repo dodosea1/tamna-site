@@ -202,16 +202,6 @@ class GamePageTest(SiteTest):
         self.assertNotIn(f'href="{B}/log/tamna/2026-11-06/"', page)
         self.assertIn(f'href="{B}/log/tamna/">', page)
 
-    def test_log_with_still_image_gets_lazy_thumbnail(self):
-        def still(root):
-            (root / "media/log/a.jpg").write_bytes(b"0")
-            path = root / "content/log/2026-11-06.md"
-            path.write_text(path.read_text(encoding="utf-8").replace("title:", "media: media/log/a.jpg\ntitle:", 1), encoding="utf-8")
-        page = self.read(self.build(still), "games/tamna/index.html")
-        self.assertIn(f'<img class="thumb" src="{B}/media/log/a.jpg" alt="" loading="lazy">', page)
-        # 움직이는 그림(GIF)은 수 MB라 목록에 넣지 않는다
-        self.assertNotIn('class="thumb" src="/tamna-site/media/log/2026-11-07-hunter-sweep.gif"', page)
-
     def test_slides_render_as_crossfade(self):
         pics = ["static/art/cards/curvy-800.webp", "static/art/cards/iyagi-800.webp"]
         page = self.read(self.build(lambda root: self.games(root, lambda g: g["curvy"].update({"slides": pics}))), "games/curvy/index.html")
@@ -309,7 +299,46 @@ class MotionTest(SiteTest):
         """글꼴 전체(2MB)를 CSS @import로 받지 않는다. 쓰는 글자 묶음만 받는 스타일시트를 head에서 부른다."""
         self.assertNotIn("@import", Path("static/style.css").read_text(encoding="utf-8"))
         home = self.read(self.build(), "index.html")
-        self.assertIn("pretendardvariable-dynamic-subset.min.css", home[:home.index("</head>")])
+        head = home[:home.index("</head>")]
+        font = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+        # 글꼴 스타일시트가 첫 화면 그리기를 막지 않는다(print로 받아 두고 다 받으면 켠다). 스크립트가 꺼져 있으면 그냥 받는다.
+        self.assertIn(f"""<link rel="stylesheet" href="{font}" media="print" onload="this.media='all'">""", head)
+        self.assertIn(f'<noscript><link rel="stylesheet" href="{font}"></noscript>', head)
+
+
+class ThumbTest(SiteTest):
+    @staticmethod
+    def still(root):
+        from PIL import Image
+        Image.new("RGB", (1600, 900), (200, 120, 40)).save(root / "media/log/a.jpg", quality=95)
+        path = root / "content/log/2026-11-06.md"
+        path.write_text(path.read_text(encoding="utf-8").replace("title:", "media: media/log/a.jpg\ntitle:", 1), encoding="utf-8")
+
+    def test_list_thumbnail_is_a_small_copy_not_the_original(self):
+        out = self.build(self.still)
+        for rel in ("index.html", "games/tamna/index.html"):
+            page = self.read(out, rel)
+            self.assertIn(f'<img class="thumb" src="{B}/thumbs/log/a.jpg" alt="" loading="lazy" width="176" height="124">', page, rel)
+            self.assertNotIn(f'class="thumb" src="{B}/media/', page, rel)
+        from PIL import Image
+        with Image.open(out / "thumbs/log/a.jpg") as small:
+            self.assertEqual(small.size, (176, 124))
+        self.assertLess((out / "thumbs/log/a.jpg").stat().st_size, 20_000)
+        # 기록 글 본문은 원본 그림 그대로
+        self.assertIn(f'src="{B}/media/log/a.jpg"', self.read(out, "log/tamna/2026-11-06/index.html"))
+
+    def test_gif_and_missing_picture_get_no_thumbnail(self):
+        page = self.read(self.build(), "games/tamna/index.html")  # 픽스처의 11-07 기록은 GIF
+        self.assertNotIn('class="thumb"', page)
+
+    def test_without_pillow_lists_simply_have_no_pictures(self):
+        import tools.sitegen.thumbs as thumbs
+        original = thumbs.make_thumb
+        thumbs.make_thumb = lambda src, dst: False
+        self.addCleanup(setattr, thumbs, "make_thumb", original)
+        out = self.build(self.still)
+        self.assertNotIn('class="thumb"', self.read(out, "index.html"))
+        self.assertFalse((out / "thumbs").exists())
 
 
 if __name__ == "__main__":

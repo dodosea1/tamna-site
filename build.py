@@ -15,6 +15,7 @@ from html import escape
 from pathlib import Path
 
 from tools.sitegen.donate import donate_block, is_direct, shows_ctee
+from tools.sitegen import thumbs
 from tools.sitegen.content import LogEntry, Monthly, bullet_items, extract_section, load_logs, load_monthly, load_pages
 from tools.sitegen.feed import FeedItem, build_rss
 from tools.sitegen.render import fill, md_to_html, render_template
@@ -182,12 +183,12 @@ def _excerpt(log: LogEntry) -> str:
     return items[0] if items else ""
 
 
-def _log_link(base: str, log: LogEntry, game_names: dict[str, str] | None = None, *, thumb: bool = False, excerpt: bool = True) -> str:
-    """기록 목록의 한 줄. thumb이면 기록의 멈춘 그림을 작게 붙인다(GIF는 수 MB라 뺀다)."""
+def _log_link(base: str, log: LogEntry, game_names: dict[str, str] | None = None, *, thumb: str = "", excerpt: bool = True) -> str:
+    """기록 목록의 한 줄. thumb(작은 그림의 사이트 안 경로)이 있으면 붙인다."""
     tag = f'<span class="g">{escape(game_names[log.game])}</span>' if game_names and log.game in game_names else ""
-    still = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "") if thumb else ""
-    pic = f'<img class="thumb" src="{base}/{escape(still)}" alt="" loading="lazy">' if still else ""
-    cls = ' class="has-thumb"' if still else ""
+    w, h = thumbs.THUMB_SIZE
+    pic = f'<img class="thumb" src="{base}/{escape(thumb)}" alt="" loading="lazy" width="{w}" height="{h}">' if thumb else ""
+    cls = ' class="has-thumb"' if thumb else ""
     x = f'<span class="x">{escape(_excerpt(log))}</span>' if excerpt else ""
     return (f'<li><a{cls} href="{base}/{log.path}"><span class="d">{escape(log.date)}</span>'
             f'<span class="t">{tag}{escape(log.title)}</span>{x}{pic}</a></li>')
@@ -387,6 +388,20 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         written.add(path)
         _write(out / path / "index.html", html)
 
+    thumb_made: dict[str, str] = {}
+
+    def thumb_for(log: LogEntry) -> str:
+        """기록의 멈춘 그림(GIF 제외)을 줄여 thumbs/ 아래에 두고 그 경로를 돌려준다. 만들 수 없으면 ''."""
+        still = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "")
+        parts = still.split("/")
+        if not still or parts[0] != "media" or ".." in parts:
+            return ""
+        if still not in thumb_made:
+            rel = "/".join(["thumbs", *parts[1:]])
+            rel = rel[: rel.rindex(".")] + ".jpg"
+            thumb_made[still] = rel if thumbs.make_thumb(root / still, out / rel) else ""
+        return thumb_made[still]
+
     cards = "".join(game_card(base, g) for g in games)
     has_tester = any(p.slug == "together" for p in game_pages.get("tamna", []))
 
@@ -396,7 +411,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     index_ctx = {
         **common,
         "cards": cards,
-        "latest_logs": "".join(_log_link(base, log, game_names, thumb=True) for log in logs[:6]) or "<li>아직 없습니다</li>",
+        "latest_logs": "".join(_log_link(base, log, game_names, thumb=thumb_for(log)) for log in logs[:6]) or "<li>아직 없습니다</li>",
         "live": live_line(logs, date.today()),
         # 후원은 상자 대신 아래쪽 한 줄만 둔다(설계 5-5). 둘 다 없으면 구역을 두지 않는다.
         "home_follow": f'<section class="wrap home-follow">{home_follow}</section>' if home_follow else "",
@@ -425,7 +440,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         shot = _hero_html(base, g) or _slides_html(base, g)
         if not shot and g.get("card_image"):
             shot = f'<figure class="game-shot"><img src="{base}/{escape(g["card_image"])}" alt="" loading="eager"></figure>'
-        log_items = "".join(_log_link(base, log, thumb=True, excerpt=False) for log in g_logs[:3])
+        log_items = "".join(_log_link(base, log, thumb=thumb_for(log), excerpt=False) for log in g_logs[:3])
         log_more = f'<a class="more" href="{base}/log/{slug}/">{escape(g["name"])} 기록 전체</a>' if g_logs else ""
         ctx = {
             **gfill,
