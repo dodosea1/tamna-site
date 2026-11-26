@@ -171,7 +171,8 @@ class SharePreviewAndHomeTest(unittest.TestCase):
         self.assertNotIn('class="play"', (self.build() / "games/tamna/index.html").read_text(encoding="utf-8"))
         out = self.build(games_edit=lambda g: g[0].update(play_media="media/clip.mp4", play_label="실제 게임 화면(개발 중)"))
         html = (out / "games/tamna/index.html").read_text(encoding="utf-8")
-        self.assertIn('<video class="play-video" src="/tamna-site/media/clip.mp4" autoplay muted loop playsinline', html)
+        # 2026-11-26 리뉴얼: 페이지를 열 때 영상을 받지 않고(preload none), 화면에 들어오면 site.js가 재생한다.
+        self.assertIn('<video class="play-video" src="/tamna-site/media/clip.mp4" muted loop playsinline preload="none" controls', html)
         self.assertIn("<figcaption>실제 게임 화면(개발 중)</figcaption>", html)
 
     def test_sub_pages_get_an_art_band_and_home_does_not(self):

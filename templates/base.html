@@ -19,10 +19,13 @@
 <link rel="icon" href="{{base}}/static/brand/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="{{base}}/static/brand/favicon.svg">
 <link rel="apple-touch-icon" href="{{base}}/static/brand/apple-touch-icon.png">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="{{base}}/static/style.css">
 <link rel="alternate" type="application/rss+xml" title="{{site_title}} 개발 기록" href="{{base}}/feed.xml">
 </head>
 <body>
+<script>document.documentElement.classList.add('js')</script>
 <header class="site-header">
   <div class="wrap">
     <a class="brand" href="{{base}}/">{{brand}}</a>
@@ -43,39 +46,7 @@
     <p class="attribution">사이트의 그림과 화면은 개발 중인 게임의 것이며 바뀔 수 있습니다.</p>
   </div>
 </footer>
-<script>
-document.querySelectorAll('.email').forEach(function (e) { e.textContent = e.dataset.u + '@' + e.dataset.d; });
-document.querySelectorAll('.copy').forEach(function (b) {
-  b.addEventListener('click', function () {
-    var label = b.textContent;
-    navigator.clipboard.writeText(b.dataset.copy).then(function () {
-      b.textContent = '복사했습니다';
-      setTimeout(function () { b.textContent = label; }, 2000);
-    });
-  });
-});
-var toggle = document.querySelector('.menu-toggle');
-var nav = document.getElementById('site-nav');
-if (toggle && nav) {
-  toggle.addEventListener('click', function () {
-    var open = nav.classList.toggle('open');
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    toggle.textContent = open ? '닫기' : '메뉴';
-  });
-}
-document.querySelectorAll('.play-video').forEach(function (v) {
-  function toggle() { if (v.paused) { v.play(); } else { v.pause(); } }
-  v.addEventListener('click', toggle);
-  v.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-});
-if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  document.querySelectorAll('video[autoplay]').forEach(function (v) { v.removeAttribute('autoplay'); v.pause(); v.controls = true; });
-}
-var header = document.querySelector('.site-header');
-function onScroll() { header.classList.toggle('scrolled', window.scrollY > 40); }
-window.addEventListener('scroll', onScroll, { passive: true });
-onScroll();
-</script>
+<script src="{{base}}/static/site.js" defer></script>
 {{analytics}}
 </body>
 </html>

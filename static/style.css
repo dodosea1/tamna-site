@@ -1,5 +1,3 @@
-@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css');
-
 :root {
   --bg: #14132b;
   --bg-2: #1c1a3d;
@@ -230,3 +228,106 @@ button.button:focus-visible { outline: 2px solid currentColor; outline-offset: 2
 .box { background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px; }
 .box h3 { margin: 0 0 6px; font-size: 1.05rem; }
 .box p { color: var(--muted); font-size: 0.92rem; margin: 0 0 10px; }
+
+/* ── 인터랙티브 리뉴얼 A안 (2026-11-26): 휴대폰 먼저 ──
+   움직임은 가볍게. 숨기는 규칙은 html.js 아래에서만 걸어, 스크립트가 꺼져도 모든 것이 보인다. */
+
+/* 엄지 영역: 누르는 것은 최소 44px */
+.btn, .button, .follow, .menu-toggle { min-height: 44px; }
+.follow, .menu-toggle { display: inline-flex; align-items: center; }
+.menu-toggle { display: none; }
+@media (max-width: 900px) { .menu-toggle { display: inline-flex; } .site-nav a { min-height: 44px; display: flex; align-items: center; } }
+.more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 6px; }
+.filters a { display: inline-flex; align-items: center; min-height: 44px; padding: 4px 16px; }
+.footer-nav a, .site-footer p a { display: inline-block; padding: 12px 2px; }
+.crumbs a { display: inline-block; padding: 12px 0; }
+.log-list a, .log-groups a { min-height: 44px; }
+
+/* 누름 반응 */
+.game-card, .btn, .button, .follow { transition: transform 0.12s ease, border-color 0.2s ease, filter 0.2s ease; }
+.game-card:active, .btn:active, .button:active, .follow:active { transform: scale(0.97); }
+a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+/* 살아 있음 줄 */
+.live { margin: 20px 0 0; font-size: 0.92rem; color: rgba(241, 232, 212, 0.9); }
+.live::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 9px; border-radius: 50%; background: #7fc49b; box-shadow: 0 0 0 0 rgba(127, 196, 155, 0.6); }
+@media (prefers-reduced-motion: no-preference) {
+  .live::before { animation: live-pulse 2.4s ease-out infinite; }
+  @keyframes live-pulse { 0% { box-shadow: 0 0 0 0 rgba(127, 196, 155, 0.55); } 70%, 100% { box-shadow: 0 0 0 9px rgba(127, 196, 155, 0); } }
+}
+
+/* 옆으로 넘기는 카드 줄. 휴대폰에서는 다음 카드가 살짝 보이게, 넓은 화면에서는 격자. */
+.rail { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; margin: 10px -24px 0; padding: 4px 24px 16px; scroll-padding-left: 24px; scrollbar-width: none; }
+.rail::-webkit-scrollbar { display: none; }
+.rail > .game-card { flex: 0 0 78%; max-width: 330px; scroll-snap-align: start; }
+@media (min-width: 720px) {
+  .rail { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; overflow: visible; margin: 10px 0 0; padding: 0; }
+  .rail > .game-card { max-width: none; }
+}
+.game-card .pic { position: relative; overflow: hidden; }
+.game-card .pic video { width: 100%; height: 100%; object-fit: cover; display: block; background: #26244a; }
+.other-games { padding-top: 44px !important; padding-bottom: 28px !important; border-top: 1px solid var(--line); margin-top: 28px; }
+.wrap.narrow + .other-games { max-width: 780px; }
+.other-games .eyebrow { font-size: 1.05rem; color: var(--text); font-weight: 700; letter-spacing: -0.01em; }
+.home-games { padding-bottom: 20px !important; }
+.home-games + section.wrap { padding-top: 36px; }
+
+/* 응원 한 줄: 조르지 않는다 */
+.cheer { max-width: 1120px; margin: 0 auto; padding: 0 24px 12px; color: var(--muted); font-size: 0.93rem; }
+.cheer a { display: inline-block; padding: 12px 0; font-weight: 600; }
+.wrap.narrow ~ .cheer { max-width: 780px; }
+.home-follow { padding-top: 12px !important; padding-bottom: 28px !important; }
+.home-follow .cheer { padding: 0; margin-top: 10px; }
+
+/* 다음 소식 받기 */
+.follow-box { margin: 28px 0 8px; padding: 18px 18px 20px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 14px; }
+.follow-box .eyebrow { margin-bottom: 12px; }
+.follow-box .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-start; }
+@media (max-width: 480px) { .follow-box .actions .btn { flex: 1 1 100%; } }
+
+/* 지금 어디까지 */
+.now-block { margin: 22px 0 8px; }
+.now-block ul { list-style: none; padding: 0; margin: 0 0 8px; }
+.now-block li { padding: 10px 0 10px 16px; border-left: 2px solid var(--accent); margin-bottom: 8px; line-height: 1.5; font-size: 0.98rem; }
+.now-block time { display: block; font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.article .now-block ul { padding-left: 0; }
+
+/* 게임 페이지 맨 위 그림과 그림 넘김 */
+.article.game .tags { margin: -6px 0 16px; }
+.game-shot { margin: 0 0 22px; }
+.game-shot > img { width: 100%; height: auto; display: block; border-radius: 14px; background: var(--bg-2); }
+.slides { position: relative; border-radius: 14px; overflow: hidden; background: var(--bg-2); }
+.slides img { width: 100%; height: auto; display: block; border-radius: 0 !important; }
+.slides img + img { display: none; }
+.js .slides { aspect-ratio: 16 / 9; }
+.js .slides img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.8s ease; }
+.js .slides img.on { opacity: 1; }
+.play-video[controls] { cursor: auto; }
+
+/* 기록 목록의 작은 그림 */
+.log-list a.has-thumb { grid-template-columns: 6.2em 1fr 88px; }
+.log-list .thumb { grid-column: 3; grid-row: 1 / span 2; width: 88px; height: 62px; object-fit: cover; border-radius: 8px; background: var(--bg-2); align-self: center; }
+@media (max-width: 600px) {
+  .log-list a.has-thumb { grid-template-columns: 1fr 80px; }
+  .log-list a.has-thumb .thumb { grid-column: 2; grid-row: 1 / span 3; width: 80px; height: 58px; }
+}
+
+/* 올라오며 나타나기 (site.js가 화면 아래에 있는 것에만 .reveal을 붙인다) */
+.js .reveal { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.js .reveal.in { opacity: 1; transform: none; }
+
+/* 휴대폰: 탐라 첫 화면 그림을 낮춰 실제 게임 화면이 첫 화면 안에 들어오게 한다 */
+@media (max-width: 720px) {
+  .hero { height: 58vh; min-height: 400px; }
+  .hero-text { bottom: 4vh; }
+  .now.wrap { padding-top: 28px; }
+  .studio-hero { padding-top: 96px !important; }
+  .studio-hero + .wrap { padding-top: 28px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-card, .btn, .button, .follow { transition: none; }
+  .game-card:active, .btn:active, .button:active, .follow:active { transform: none; }
+  .js .reveal, .js .slides img { transition: none; }
+  .rail { scroll-behavior: auto; }
+}

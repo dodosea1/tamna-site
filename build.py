@@ -71,15 +71,21 @@ def _first_paragraph(md: str) -> str:
     return ""
 
 
-def _play_html(base: str, site: dict) -> str:
-    """홈의 실제 게임 화면. 자동 재생·소리 없음·반복. 설정이 없으면 비운다."""
+def _play_html(base: str, site: dict, root: Path | None = None) -> str:
+    """게임 페이지의 실제 게임 화면. 소리 없음·반복. 설정이 없으면 비운다.
+
+    영상은 페이지를 열 때 받지 않는다(preload="none"). site.js가 화면에 들어올 때 재생하고,
+    움직임 줄이기·데이터 절약·스크립트 꺼짐이면 조작 막대를 눌러야 재생한다.
+    media/previews/<영상 이름>.jpg가 있으면 그 그림을 포스터로 먼저 보여 준다.
+    """
     path = site.get("play_media", "")
     if not path:
         return ""
     label = escape(site.get("play_label", ""))
     if path.lower().endswith(".mp4"):
-        tag = (f'<video class="play-video" src="{base}/{path}" autoplay muted loop playsinline preload="metadata" '
-               f'tabindex="0" title="누르면 멈추고, 다시 누르면 재생합니다"></video>')
+        still = f"media/previews/{Path(path).stem}.jpg"
+        poster = f' poster="{base}/{escape(still)}"' if root is not None and (root / still).is_file() else ""
+        tag = f'<video class="play-video" src="{base}/{escape(path)}"{poster} muted loop playsinline preload="none" controls></video>'
     else:
         tag = f'<img class="play-video" src="{base}/{path}" alt="{label}" loading="lazy">'
     return f'<figure class="play">{tag}<figcaption>{label}</figcaption></figure>'
@@ -439,7 +445,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             "cheer": cheer_line(base, "support" in titles),
             "hero": _hero_html(base, g),
             "shot": shot,
-            "play": _play_html(base, g),
+            "play": _play_html(base, g, root),
             "hero_cta": (f'<a class="btn" href="{base}/games/{slug}/together/">같이 사냥할 명단 올리기</a>' if has_together
                          else (f'<a class="btn" href="{base}/log/{slug}/">개발 기록 보기</a>' if g_logs else "")),
         }

@@ -274,5 +274,43 @@ class HomeTest(SiteTest):
         self.assertIn("의견 보내기", home)  # 의견 상자는 그대로
 
 
+class MotionTest(SiteTest):
+    def test_reveal_hidden_only_under_js_class(self):
+        """JS가 꺼져도 글과 카드가 보인다: 완전히 숨기는 규칙(opacity: 0)은 html.js 아래에서만 건다."""
+        css = re.sub(r"/\*.*?\*/", "", Path("static/style.css").read_text(encoding="utf-8"), flags=re.S)
+        hidden = [m.group(1).strip() for m in re.finditer(r"([^{}]+)\{[^{}]*opacity:\s*0(?![.\d])[^{}]*\}", css)]
+        self.assertTrue(hidden, "올라오며 나타나는 규칙이 있어야 한다")
+        for selectors in hidden:
+            for selector in selectors.split(","):
+                self.assertTrue(selector.strip().startswith(".js "), selector)
+
+    def test_base_loads_site_js_deferred(self):
+        out = self.build()
+        pages = [p for p in out.rglob("index.html") if 'http-equiv="refresh"' not in p.read_text(encoding="utf-8")]
+        self.assertGreater(len(pages), 8)
+        for p in pages:
+            html = p.read_text(encoding="utf-8")
+            self.assertIn(f'<script src="{B}/static/site.js" defer></script>', html, p)
+            # 본문보다 먼저 html.js를 붙인다(본문이 그려지기 전에 CSS가 알 수 있게).
+            self.assertIn("<body>\n<script>document.documentElement.classList.add('js')</script>", html.replace("\r\n", "\n"), p)
+            self.assertNotIn("addEventListener", html, p)  # 인라인 동작 스크립트는 site.js로 옮겼다
+        self.assertTrue((out / "static/site.js").exists())
+
+    def test_play_clip_waits_for_view_and_shows_poster(self):
+        def clip(root):
+            (root / "media/previews").mkdir(parents=True)
+            (root / "media/previews/clip.jpg").write_bytes(b"0")
+            self.games(root, lambda g: g["tamna"].update({"play_media": "media/clip.mp4", "play_label": "화면"}))
+        page = self.read(self.build(clip), "games/tamna/index.html")
+        self.assertIn(f'<video class="play-video" src="{B}/media/clip.mp4" poster="{B}/media/previews/clip.jpg" muted loop playsinline preload="none" controls', page)
+        self.assertNotIn("autoplay", page)
+
+    def test_full_font_file_is_not_imported(self):
+        """글꼴 전체(2MB)를 CSS @import로 받지 않는다. 쓰는 글자 묶음만 받는 스타일시트를 head에서 부른다."""
+        self.assertNotIn("@import", Path("static/style.css").read_text(encoding="utf-8"))
+        home = self.read(self.build(), "index.html")
+        self.assertIn("pretendardvariable-dynamic-subset.min.css", home[:home.index("</head>")])
+
+
 if __name__ == "__main__":
     unittest.main()
