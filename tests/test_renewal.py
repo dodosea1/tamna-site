@@ -301,9 +301,9 @@ class MotionTest(SiteTest):
         home = self.read(self.build(), "index.html")
         head = home[:home.index("</head>")]
         font = "https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-        # 글꼴 스타일시트가 첫 화면 그리기를 막지 않는다(print로 받아 두고 다 받으면 켠다). 스크립트가 꺼져 있으면 그냥 받는다.
-        self.assertIn(f"""<link rel="stylesheet" href="{font}" media="print" onload="this.media='all'">""", head)
-        self.assertIn(f'<noscript><link rel="stylesheet" href="{font}"></noscript>', head)
+        # 휴대폰 폭에서는 웹 글꼴을 받지 않고 기기 글꼴을 쓴다(글꼴 조각 500KB와 조각마다 다시 그리는 일을 없앤다).
+        self.assertIn(f'<link rel="stylesheet" href="{font}" media="(min-width: 901px)">', head)
+        self.assertEqual(head.count("dynamic-subset"), 1)
 
 
 class ThumbTest(SiteTest):
