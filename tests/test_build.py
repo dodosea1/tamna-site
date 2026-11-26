@@ -57,7 +57,7 @@ class BuildTest(unittest.TestCase):
     def test_internal_links_resolve_with_base_path(self):
         for f in self.out.rglob("*.html"):
             for href in re.findall(r'(?:href|src)="(/tamna-site/[^"#]+)"', f.read_text(encoding="utf-8")):
-                target = self.out / href[len("/tamna-site/") :]
+                target = self.out / href[len("/tamna-site/") :].split("?")[0]   # ?v=는 style.css·site.js의 내용 지문
                 self.assertTrue(target.exists() or (target / "index.html").exists(), f"{f}: {href}")
 
     def test_korean_roundtrip_utf8(self):

@@ -35,7 +35,7 @@ class PanelTest(unittest.TestCase):
         self.assertIn('<img class="panel-blur"', frame)
         self.assertIn('<img class="panel-pic"', frame)
         self.assertNotIn("fetchpriority", frame)
-        self.assertEqual(frame.count('loading="lazy"'), 2)
+        self.assertEqual(frame.count('loading="late"'), 2)   # 화면 가까이 올 때 받는다(late_images가 바꾼다)
         self.assertIn("<small>2D 도트</small>", frame)
 
     def test_panel_without_picture_has_no_placeholder_text(self):
@@ -106,12 +106,12 @@ class ListPiecesTest(unittest.TestCase):
         self.assertIn(f'<a class="mini-panel" href="{B}/games/curvy/" data-goatcounter-click="other-curvy">', html)
         self.assertIn('<a class="mini-panel" href="https://gohyang.town" rel="noopener" data-goatcounter-click="other-gohyang">', html)
         self.assertNotIn("/games/tamna/", html)
-        self.assertIn(f'<img src="{B}/static/art/c.webp" alt="" loading="lazy">', html)
+        self.assertIn(f'<img src="{B}/static/art/c.webp" alt="" loading="late">', html)
         self.assertIn('<span class="name">curvy(가칭)</span>', html)
         self.assertEqual(other_games_rail(B, [TAMNA], "tamna"), "")
         # 세로 화면용 그림이 있으면 세로로 선 작은 폭에는 그 그림을 쓴다
         tall = other_games_rail(B, [{**TAMNA, "card_image": "static/art/wide.webp", "hero_media_mobile": "static/art/tall.webp"}, CURVY], "curvy")
-        self.assertIn(f'<img src="{B}/static/art/tall.webp" alt="" loading="lazy">', tall)
+        self.assertIn(f'<img src="{B}/static/art/tall.webp" alt="" loading="late">', tall)
         self.assertNotIn("wide.webp", tall)
 
 
@@ -316,7 +316,7 @@ class GamePageTest(SiteTest):
     def test_tamna_page_has_no_css_background_pictures(self):
         page = self.read(self.build(), "games/tamna/index.html")
         self.assertNotIn("background-image", page)
-        self.assertRegex(page, r'<img[^>]*src="/tamna-site/static/art/scene-hunt-1400\.webp"[^>]*loading="lazy"')
+        self.assertRegex(page, r'<img[^>]*data-src="/tamna-site/static/art/scene-hunt-1400[.]webp"')
         self.assertIn("1990년대 후반 한국 2D 온라인 RPG들에서 영감을 받았고", page)
 
 
@@ -455,6 +455,143 @@ class ReviewFixTest(SiteTest):
         ready = js.index("classList.add('ready')")
         self.assertLess(js.index("var checkPanels"), ready)
         self.assertLess(ready, js.index("/* 영상:"))
+
+
+class PolishTest(SiteTest):
+    """다듬기(2026-11-26): 사용자가 병풍 미리 보기를 보고 '맞아, 다듬어'라고 한 뒤."""
+
+    def setUp(self):
+        self.css = re.sub(r"/[*].*?[*]/", "", Path("static/style.css").read_text(encoding="utf-8"), flags=re.S)
+        self.js = Path("static/site.js").read_text(encoding="utf-8")
+
+    def test_tester_button_says_which_game(self):
+        from tools.sitegen.studio import follow_block
+        self.assertIn('data-goatcounter-click="tester-tamna">탐라 테스트 알림 받기</a>', follow_block(B, TAMNA, "", True))
+        home = self.read(self.build(full), "index.html")
+        self.assertIn(">탐라 테스트 알림 받기</a>", home)
+        self.assertNotIn(">테스트 알림 받기</a>", home)
+
+    def test_late_images_wait_for_the_script_and_keep_a_noscript_copy(self):
+        from tools.sitegen.studio import late_images
+        html = late_images(f'<p><img class="x" src="{B}/static/art/a.webp" alt="" loading="late" width="1400" height="780">'
+                           '<img src="b.webp" alt="" loading="lazy"></p>')
+        self.assertIn(f'data-src="{B}/static/art/a.webp"', html)
+        self.assertIn("viewBox='0 0 1400 780'", html)
+        self.assertIn(f'<noscript><img class="x" src="{B}/static/art/a.webp" alt="" loading="lazy" width="1400" height="780"></noscript>', html)
+        self.assertNotIn('loading="late"', html)
+        self.assertEqual(html.count('<img src="b.webp" alt="" loading="lazy">'), 1)   # 다른 그림은 그대로
+        outside = re.sub(r"<noscript>.*?</noscript>", "", html)
+        self.assertNotIn(f' src="{B}/static/art/a.webp"', outside)
+        self.assertIn(' src="data:image/svg+xml,', outside)
+        # 크기를 적지 않은 그림(폭을 가득 채우는 그림)도 된다
+        self.assertIn('data-src="c.webp"', late_images('<img src="c.webp" alt="" loading="late">'))
+
+    def test_tamna_pictures_below_the_first_screen_are_late(self):
+        page = self.read(self.build(), "games/tamna/index.html")
+        outside = re.sub(r"<noscript>.*?</noscript>", "", page, flags=re.S)
+        for pic in ("scene-hunt-1400.webp", "por-hunter-900.webp", "por-simbang-900.webp", "por-kkot-900.webp", "por-chasa-900.webp"):
+            self.assertIn(f'data-src="{B}/static/art/{pic}"', outside, pic)
+            self.assertNotIn(f' src="{B}/static/art/{pic}"', outside, pic)
+            self.assertIn(f'<noscript><img src="{B}/static/art/{pic}"', page, pic)
+
+    def test_no_page_keeps_the_late_mark(self):
+        def pictured(root):
+            full(root)
+            self.games(root, lambda g: g["curvy"].update({"card_image": "static/art/cards/curvy-800.webp"}))
+        out = self.build(pictured)
+        for page in real_pages(out):
+            self.assertNotIn('loading="late"', page.read_text(encoding="utf-8"), page)
+        home = self.read(out, "index.html")
+        first = between(home, 'id="p-tamna"', "</section>")
+        self.assertNotIn("data-src", first.split("<video")[0])      # 첫 폭의 그림은 바로 받는다
+        self.assertIn("data-src", between(home, 'id="p-curvy"', "</section>"))
+
+    def test_site_js_brings_late_pictures_in_near_the_screen(self):
+        self.assertIn("img[data-src]", self.js)
+        self.assertIn("rootMargin", self.js)
+        self.assertIn("html:not(.js) img[data-src]", self.css)
+
+    def test_slides_can_carry_a_description(self):
+        from build import build_site
+        ok = "static/art/cards/iyagi-800.webp"
+        pics = [{"src": "static/art/cards/curvy-800.webp", "alt": "첫 <장면>"}, ok]
+        page = self.read(self.build(lambda root: self.games(root, lambda g: g["curvy"].update({"slides": pics}))), "games/curvy/index.html")
+        block = between(page, '<div class="slides" data-slides>', "</figure>")
+        self.assertIn(f'<img src="{B}/static/art/cards/curvy-800.webp" alt="첫 &lt;장면&gt;" loading="eager" class="on">', block)
+        self.assertIn(f'<img src="{B}/{ok}" alt="" loading="lazy">', block)
+        self.assertIn('<span class="slide-note" data-slide-note>첫 &lt;장면&gt;</span>', block)
+        for bad in ([{"alt": "그림 없음"}, ok], [{"src": "static/art/none.webp"}, ok], [{"src": "static/art/cards/curvy-800.webp", "alt": 3}, ok]):
+            root, out = self.make(lambda r, bad=bad: self.games(r, lambda g: g["curvy"].update({"slides": bad})))
+            with self.assertRaises(ValueError, msg=str(bad)) as caught:
+                build_site(root, out, base=B)
+            self.assertIn("slides", str(caught.exception))
+
+    def test_slides_without_motion_show_every_picture(self):
+        # 스크립트가 없거나 움직임을 줄이면 겹쳐 바꾸지 않고 전부 차례로 보여 준다(본문에서 같은 그림을 뺐으므로).
+        self.assertNotIn(".slides img + img { display: none", self.css)
+        self.assertIn(".js .slides:not(.still)", self.css)
+        self.assertIn("classList.add('still')", self.js)
+        self.assertIn("data-slide-note", self.js)
+
+    def test_real_game_text_does_not_repeat_its_slide_pictures(self):
+        checked = 0
+        for g in json.loads(Path("data/games.json").read_text(encoding="utf-8")):
+            text = Path(f"content/games/{g['slug']}/index.md")
+            for s in g.get("slides") or []:
+                checked += 1
+                self.assertNotIn(s if isinstance(s, str) else s["src"], text.read_text(encoding="utf-8") if text.exists() else "", g["slug"])
+        self.assertGreater(checked, 0)
+
+    def test_style_and_script_addresses_change_with_their_contents(self):
+        """게시 직후 브라우저에 남은 옛 style.css·site.js가 새 HTML과 어긋나지 않게(늦게 받는 그림이 안 뜨는 일), 주소에 내용 지문을 붙인다."""
+        def marks(html):
+            return (re.search(r'href="/tamna-site/static/style[.]css[?]v=([0-9a-f]{8})"', html),
+                    re.search(r'src="/tamna-site/static/site[.]js[?]v=([0-9a-f]{8})" defer', html))
+        before = marks(self.read(self.build(), "index.html"))
+        self.assertTrue(all(before))
+
+        def touched(root):
+            shutil.copytree("static", root / "static")
+            with open(root / "static/style.css", "a", encoding="utf-8") as f:
+                f.write("\n/* 바뀜 */\n")
+        after = marks(self.read(self.build(touched), "about/index.html"))
+        self.assertTrue(all(after))
+        self.assertNotEqual(before[0].group(1), after[0].group(1))
+        self.assertEqual(before[1].group(1), after[1].group(1))
+
+    def test_log_nav_links_the_neighbouring_records(self):
+        from tools.sitegen.studio import log_nav
+        older, newer = log("2026-11-23"), log("2026-11-25")
+        html = log_nav(B, older, newer)
+        self.assertIn('<nav class="log-nav" aria-label="기록 넘기기">', html)
+        self.assertIn(f'<a class="older" href="{B}/log/tamna/2026-11-23/"><small>이전 기록 · 11.23</small><span>제목 2026-11-23</span></a>', html)
+        self.assertIn(f'<a class="newer" href="{B}/log/tamna/2026-11-25/"><small>다음 기록 · 11.25</small><span>제목 2026-11-25</span></a>', html)
+        self.assertNotIn("newer", log_nav(B, older, None))
+        self.assertNotIn("older", log_nav(B, None, newer))
+        self.assertEqual(log_nav(B, None, None), "")
+
+    def test_log_article_leads_to_neighbours_of_the_same_game_and_back_to_the_game(self):
+        out = self.build()
+        first, last = self.read(out, "log/tamna/2026-11-06/index.html"), self.read(out, "log/tamna/2026-11-07/index.html")
+        self.assertIn(f'<a class="newer" href="{B}/log/tamna/2026-11-07/">', first)
+        self.assertNotIn('class="older"', first)
+        self.assertIn(f'<a class="older" href="{B}/log/tamna/2026-11-06/">', last)
+        self.assertNotIn('class="newer"', last)
+        self.assertIn(f'<a class="more" href="{B}/games/tamna/">탐라(가제) 게임 페이지</a>', last)
+        # 다른 게임의 기록으로는 넘어가지 않는다. 기록이 하나뿐이면 넘김 줄이 없다.
+        only = self.read(out, "log/curvy/2026-11-07/index.html")
+        self.assertNotIn("log-nav", only)
+        self.assertIn(f'<a class="more" href="{B}/games/curvy/">curvy(가칭) 게임 페이지</a>', only)
+
+    def test_pages_fade_into_each_other_where_the_browser_can(self):
+        self.assertIn("@view-transition { navigation: auto; }", self.css)
+
+    def test_korean_text_breaks_between_words(self):
+        self.assertRegex(self.css, r"body [{][^}]*word-break: keep-all")
+        self.assertRegex(self.css, r"body [{][^}]*overflow-wrap: break-word")
+
+    def test_dots_step_aside_on_paper(self):
+        self.assertRegex(self.css, r"[.]js [.]site-header[.]solid [.]dots [{][^}]*opacity: 0")
 
 
 if __name__ == "__main__":

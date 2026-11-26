@@ -152,24 +152,51 @@
   /* 움직임 줄이기·데이터 절약: 폭의 미리보기 영상은 받지 않고(포스터 그대로),
      게임 화면 영상은 조작 막대(HTML의 controls)를 눌러야만 받아서 재생한다. */
 
-  /* 개발 중 화면 여러 장을 천천히 겹쳐 바꾼다. 움직임을 줄이면 첫 장만. */
-  if (motionOK) {
-    all('[data-slides]').forEach(function (box) {
-      var pics = all('img', box);
-      if (pics.length < 2) { return; }
-      var at = 0;
-      var visible = !canObserve;
-      if (canObserve) {
-        new IntersectionObserver(function (entries) { visible = entries[0].isIntersecting; }).observe(box);
-      }
-      setInterval(function () {
-        if (!visible || doc.hidden) { return; }
-        var next = (at + 1) % pics.length;
-        if (!pics[next].complete) { return; }   /* 다음 그림을 아직 못 받았으면 기다린다 */
-        pics[at].classList.remove('on');
-        pics[next].classList.add('on');
-        at = next;
-      }, 4000);
+  /* 늦게 받는 그림(img[data-src]): 화면 한 장 거리 안으로 오면 받는다.
+     브라우저의 loading="lazy"는 훨씬 멀리서부터 받아, 긴 페이지의 큰 그림이 처음부터 받아진다.
+     작은 병풍(.rail)은 옆으로 미는 줄이라, 줄이 가까이 오면 그 안의 그림을 한꺼번에 받는다. */
+  var lateImgs = all('img[data-src]');
+  var bring = function (img) {
+    var src = img.getAttribute('data-src');
+    if (src) { img.removeAttribute('data-src'); img.src = src; }
+  };
+  if (canObserve) {
+    var lateWatcher = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) { return; }
+        lateWatcher.unobserve(entry.target);
+        if (entry.target.tagName === 'IMG') { bring(entry.target); } else { all('img[data-src]', entry.target).forEach(bring); }
+      });
+    }, { rootMargin: '100% 0px' });
+    var lateTargets = [];
+    lateImgs.forEach(function (img) {
+      var target = (img.closest && img.closest('.rail')) || img;
+      if (lateTargets.indexOf(target) === -1) { lateTargets.push(target); lateWatcher.observe(target); }
     });
+  } else {
+    lateImgs.forEach(bring);
   }
+  window.addEventListener('beforeprint', function () { lateImgs.forEach(bring); });
+
+  /* 개발 중 화면 여러 장을 천천히 겹쳐 바꾸고, 지금 보이는 장면의 설명을 그림 아래에 적는다.
+     움직임을 줄이거나 데이터 절약이면 겹치지 않고 전부 차례로 보여 준다(still). */
+  all('[data-slides]').forEach(function (box) {
+    var pics = all('img', box);
+    if (!motionOK || pics.length < 2) { box.classList.add('still'); return; }
+    var note = box.parentNode.querySelector('[data-slide-note]');
+    var at = 0;
+    var visible = !canObserve;
+    if (canObserve) {
+      new IntersectionObserver(function (entries) { visible = entries[0].isIntersecting; }).observe(box);
+    }
+    setInterval(function () {
+      if (!visible || doc.hidden) { return; }
+      var next = (at + 1) % pics.length;
+      if (!pics[next].complete) { return; }   /* 다음 그림을 아직 못 받았으면 기다린다 */
+      pics[at].classList.remove('on');
+      pics[next].classList.add('on');
+      at = next;
+      if (note) { note.textContent = pics[at].alt; }
+    }, 4000);
+  });
 })();

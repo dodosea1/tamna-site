@@ -30,7 +30,11 @@
     "platform": "모바일 · 안드로이드 먼저",
     "summary": "전래동화 세계의 2D 도트 협동 RPG",
     "card_image": "static/art/cards/iyagi-800.webp",
-    "slides": ["static/art/games/iyagi/village.webp", "static/art/games/iyagi/hunting.webp", "static/art/games/iyagi/tiger.webp"]
+    "slides": [
+      {"src": "static/art/games/iyagi/hunting.webp", "alt": "「호랑이와 곶감」 사냥터에서 곶감 도깨비들과 싸우는 파티"},
+      {"src": "static/art/games/iyagi/tiger.webp", "alt": "사냥터 끝에서 어수룩한 호랑이와 마주친 장면"},
+      {"src": "static/art/games/iyagi/village.webp", "alt": "이야기 마을에서 이야기보따리 장수 앞에 모인 파티"}
+    ]
   },
   {
     "slug": "gohyang",

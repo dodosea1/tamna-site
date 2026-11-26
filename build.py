@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import shutil
@@ -21,7 +22,7 @@ from tools.sitegen.fonts import serif_chars, title_font_link
 from tools.sitegen.feed import FeedItem, build_rss
 from tools.sitegen.render import fill, md_to_html, render_template
 from tools.sitegen.studio import (GAME_STATUS, cheer_line, date_seal, follow_block, game_card, latest_card, live_line, now_lines,
-                                  other_games_rail, panel, patch_list)
+                                  late_images, log_nav, other_games_rail, panel, patch_list)
 from tools.sitegen.tables import ai_table, feedback_table, roadmap_section, support_section
 
 
@@ -171,13 +172,23 @@ def _now_block(lines: list[tuple[str, str]]) -> str:
     return f'<section class="now-block"><p class="eyebrow">지금 어디까지</p><ul class="patch notes">{items}</ul><p class="muted small">개발 기록 기준 · 약속 아님</p></section>'
 
 
+def _slide(s) -> tuple[str, str]:
+    """slides 한 칸: 'static/…' 또는 {"src": "static/…", "alt": "장면 설명"}. → (그림, 설명)"""
+    return (s, "") if isinstance(s, str) else (s.get("src", ""), s.get("alt", ""))
+
+
 def _slides_html(base: str, g: dict) -> str:
-    """개발 중 화면 여러 장을 겹쳐 두고 site.js가 천천히 바꾼다. 첫 장만 바로 받는다."""
-    slides = g.get("slides") or []
+    """개발 중 화면 여러 장을 겹쳐 두고 site.js가 천천히 바꾼다. 첫 장만 바로 받는다.
+
+    스크립트가 없거나 움직임을 줄인 화면에서는 겹치지 않고 전부 차례로 보인다. 지금 보이는 장면의 설명은 그림 아래에 적는다.
+    """
+    slides = [_slide(s) for s in g.get("slides") or []]
     if not slides:
         return ""
-    imgs = "".join(f'<img src="{base}/{escape(s)}" alt="" loading="{"eager" if i == 0 else "lazy"}"{" class=\"on\"" if i == 0 else ""}>' for i, s in enumerate(slides))
-    return f'<figure class="plate"><div class="slides" data-slides>{imgs}</div><figcaption>개발 중 화면 · 바뀔 수 있습니다</figcaption></figure>'
+    imgs = "".join(f'<img src="{base}/{escape(src)}" alt="{escape(alt)}" loading="{"eager" if i == 0 else "lazy"}"{" class=\"on\"" if i == 0 else ""}>'
+                   for i, (src, alt) in enumerate(slides))
+    note = f'<span class="slide-note" data-slide-note>{escape(slides[0][1])}</span>' if any(alt for _, alt in slides) else ""
+    return f'<figure class="plate"><div class="slides" data-slides>{imgs}</div><figcaption>{note}개발 중 화면 · 바뀔 수 있습니다</figcaption></figure>'
 
 
 def _redirect_html(base: str, site_url: str, target: str) -> str:
@@ -221,7 +232,7 @@ def _load_games(root: Path) -> list[dict]:
 
 
 def _check_game_media(games: list[dict], root: Path, static: Path) -> None:
-    """선택 키 검사. card_video는 media/ 아래 .mp4, slides는 static/ 아래 그림 2개 이상. 없는 파일을 가리키면 멈춘다."""
+    """선택 키 검사. card_video는 media/ 아래 .mp4, slides는 static/ 아래 그림 2개 이상(설명을 붙이려면 {"src", "alt"}). 없는 파일을 가리키면 멈춘다."""
     for g in games:
         video = g.get("card_video")
         if video is not None:
@@ -232,10 +243,13 @@ def _check_game_media(games: list[dict], root: Path, static: Path) -> None:
         if slides is not None:
             if not isinstance(slides, list) or len(slides) < 2:
                 raise ValueError(f"data/games.json: slides는 그림 2개 이상의 목록이어야 합니다: {g['slug']}")
-            for s in slides:
-                ok = isinstance(s, str) and s.startswith("static/") and ".." not in s.split("/")
+            for item in slides:
+                if not isinstance(item, (str, dict)):
+                    raise ValueError(f"data/games.json: slides의 칸은 그림 경로이거나 src·alt를 가진 묶음이어야 합니다: {g['slug']}: {item}")
+                s, alt = _slide(item)
+                ok = isinstance(s, str) and isinstance(alt, str) and s.startswith("static/") and ".." not in s.split("/")
                 if not ok or not (static / s[len("static/"):]).is_file():
-                    raise ValueError(f"data/games.json: slides의 그림은 static/ 아래에 있어야 합니다: {g['slug']}: {s}")
+                    raise ValueError(f"data/games.json: slides의 그림은 static/ 아래에 있어야 하고 alt는 글이어야 합니다: {g['slug']}: {item}")
 
 
 def _log_filters(base: str, games: list[dict], logs: list[LogEntry], current: str) -> str:
@@ -306,6 +320,9 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "tagline": site.get("tagline", ""),
         "verify_meta": _verify_meta(site),
         "analytics": _analytics(site),
+        # 주소에 내용 지문을 붙인다: 게시 직후 브라우저에 남은 옛 파일이 새 HTML과 어긋나지 않게(새 파일이면 주소가 달라 다시 받는다).
+        "css_v": hashlib.sha1((static / "style.css").read_bytes()).hexdigest()[:8],
+        "js_v": hashlib.sha1((static / "site.js").read_bytes()).hexdigest()[:8],
         "author": site.get("author", ""),
         # 영감 문장은 게임마다 다르다. 공통 페이지의 {{inspiration}}은 탐라 문장이다.
         "inspiration": tamna.get("inspiration", ""),
@@ -343,7 +360,8 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             "dots": dots,
             "title_font": "<!--title-font-->",
         }
-        html = render_template("base.html", {**common, **meta, "title": title, "page_title": page_title, "content": content}, templates)
+        # 첫 화면 밖의 큰 그림(loading="late")은 가까이 왔을 때 받도록 바꾼다.
+        html = late_images(render_template("base.html", {**common, **meta, "title": title, "page_title": page_title, "content": content}, templates))
         # 제목 글꼴은 다 만든 페이지에서 제목에 쓰인 글자를 모아, 그 글자만 받는다.
         return html.replace("<!--title-font-->", title_font_link(serif_chars(html)), 1)
 
@@ -442,11 +460,18 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
                                                            description=_first_paragraph(fill(p.body_md, gfill))))
 
     # 개발 기록: 글, 전체 목록, 게임별 목록
+    own_pages = {g["slug"] for g in games if not g.get("url")}   # 이 사이트에 게임 페이지가 있는 게임
     for log in logs:
         media = "".join(_media_html(base, m) for m in log.media)
         body = md_to_html(log.body_md)
+        # 글 끝에서 같은 게임의 이전·다음 기록으로 넘기고, 그 게임 페이지로 돌아갈 수 있게 한다(logs는 최근 것부터).
+        same = [x for x in logs if x.game == log.game]
+        at = same.index(log)
+        game_link = f'<a class="more" href="{base}/games/{log.game}/">{escape(game_names[log.game])} 게임 페이지</a>' if log.game in own_pages else ""
         content = render_template("log.html", {**common, "date": log.date, "date_seal": date_seal(log.date), "title": escape(log.title), "media": media, "body": body,
                                                "game_name": game_names[log.game], "game_slug": log.game,
+                                               "log_nav": log_nav(base, same[at + 1] if at + 1 < len(same) else None, same[at - 1] if at else None),
+                                               "game_link": game_link,
                                                "other_games": other_games_rail(base, games, log.game)}, templates)
         image = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "")
         write_page(log.path, page_html(f"{log.date} {log.title}", content, path=log.path, description=_plain(_excerpt(log)), image=image, og_type="article", published=log.date))

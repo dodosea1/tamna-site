@@ -272,7 +272,7 @@ class MotionTest(SiteTest):
         self.assertGreater(len(pages), 8)
         for p in pages:
             html = p.read_text(encoding="utf-8")
-            self.assertIn(f'<script src="{B}/static/site.js" defer></script>', html, p)
+            self.assertRegex(html, rf'<script src="{B}/static/site[.]js[?]v=[0-9a-f]{{8}}" defer></script>', p)
             # 본문보다 먼저 html.js를 붙인다(본문이 그려지기 전에 CSS가 알 수 있게).
             self.assertIn("<body>\n<script>document.documentElement.classList.add('js')</script>", re.sub(r'<body class="k-[a-z]+">', "<body>", html.replace("\r\n", "\n")), p)
             self.assertNotIn("addEventListener", html, p)  # 인라인 동작 스크립트는 site.js로 옮겼다

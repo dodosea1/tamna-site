@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date, timedelta
 from html import escape
 
@@ -52,7 +53,7 @@ def other_games_rail(base: str, games: list[dict], current: str) -> str:
     for g in others:
         href, rel = _game_href(base, g)
         img = g.get("hero_media_mobile") or g.get("card_image", "")   # 세로로 선 폭이라 세로 화면용 그림이 있으면 그것
-        pic = f'<img src="{base}/{escape(img)}" alt="" loading="lazy">' if img else ""
+        pic = f'<img src="{base}/{escape(img)}" alt="" loading="late">' if img else ""
         head, _ = split_name(g["name"])
         cards += (f'<a class="mini-panel" href="{href}"{rel} data-goatcounter-click="other-{escape(g["slug"])}">{pic}'
                   f'<span class="vt" aria-hidden="true">{escape(head)}</span><span class="seal">{escape(g.get("status", "개발 중"))}</span>'
@@ -98,7 +99,9 @@ def follow_block(base: str, g: dict, threads_url: str, has_together: bool) -> st
     slug = escape(g["slug"])
     buttons = ""
     if has_together:
-        buttons += f'<a class="btn" href="{base}/games/{slug}/together/" data-goatcounter-click="tester-{slug}">테스트 알림 받기</a>'
+        # 스튜디오 첫 화면에도 놓이므로 어느 게임의 알림인지 단추에 적는다
+        head, _ = split_name(g["name"])
+        buttons += f'<a class="btn" href="{base}/games/{slug}/together/" data-goatcounter-click="tester-{slug}">{escape(head)} 테스트 알림 받기</a>'
     if threads_url:
         buttons += f'<a class="btn ghost" href="{escape(threads_url)}" rel="noopener">스레드 팔로우</a>'
     if not buttons:
@@ -140,7 +143,8 @@ def panel(base: str, g: dict, *, heading: str = "h2", eager: bool = False, cta: 
     wide면(게임 페이지 맨 위의 폭) 넓은 화면에서는 가로 그림(hero_media)을 쓴다. 첫 화면의 폭은 PC에서도 좁아 세로 그림 그대로다.
     """
     slug = escape(g["slug"])
-    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
+    # 첫 화면 밖의 폭은 가까이 왔을 때 받는다(late_images가 site.js용 표시로 바꾼다)
+    load = 'loading="eager" fetchpriority="high"' if eager else 'loading="late"'
     tall, card = g.get("hero_media_mobile", ""), g.get("card_image", "")
     note = ""
     if tall:
@@ -153,7 +157,7 @@ def panel(base: str, g: dict, *, heading: str = "h2", eager: bool = False, cta: 
     elif card:
         src = f"{base}/{escape(card)}"
         mode = "frame"
-        pics = (f'<img class="panel-blur" src="{src}" alt="" aria-hidden="true" loading="{"eager" if eager else "lazy"}">'
+        pics = (f'<img class="panel-blur" src="{src}" alt="" aria-hidden="true" loading="{"eager" if eager else "late"}">'
                 f'<img class="panel-pic" src="{src}" alt="" {load}>')
     else:
         mode, pics = "bare", ""
@@ -174,6 +178,31 @@ def panel(base: str, g: dict, *, heading: str = "h2", eager: bool = False, cta: 
             f'<div class="cap">{clip}{platform}<p>{escape(g.get("summary", ""))}</p>{cta}</div>{note}</section>')
 
 
+_LATE_IMG = re.compile(r'<img\b[^>]*\sloading="late"[^>]*>')
+_SRC = re.compile(r'\ssrc="([^"]*)"')
+
+
+def late_images(html: str) -> str:
+    """loading="late"라고 적은 그림을 화면 가까이 올 때 site.js가 받도록 바꾼다.
+
+    브라우저의 loading="lazy"는 화면에서 1250~2500px 떨어진 그림까지 미리 받아서, 긴 페이지의 큰 그림이 처음부터 받아진다.
+    그래서 진짜 주소는 data-src에 두고 src에는 같은 비율의 빈 그림을 둔다(자리가 미리 잡혀 화면이 밀리지 않는다).
+    스크립트가 꺼진 브라우저를 위해 원래 그림을 noscript에 한 번 더 둔다.
+    """
+    def swap(m: re.Match) -> str:
+        tag = m.group(0)
+        src = _SRC.search(tag)
+        if not src:
+            return tag.replace(' loading="late"', ' loading="lazy"')
+        width, height = re.search(r'\swidth="(\d+)"', tag), re.search(r'\sheight="(\d+)"', tag)
+        box = f"{width.group(1)} {height.group(1)}" if width and height else "1 1"
+        blank = f"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 {box}'/%3E"
+        plain = tag.replace(' loading="late"', ' loading="lazy"')
+        waiting = tag.replace(src.group(0), f' src="{blank}" data-src="{src.group(1)}"', 1).replace(' loading="late"', "")
+        return f"{waiting}<noscript>{plain}</noscript>"
+    return _LATE_IMG.sub(swap, html)
+
+
 def date_seal(day: str) -> str:
     """날짜 도장. '2026-11-25' → 11.25 / 2026."""
     year, _, rest = day.partition("-")
@@ -189,6 +218,17 @@ def patch_list(base: str, logs: list[LogEntry], game_names: dict[str, str] | Non
         game = f'<span class="g">{escape(game_names[log.game])}</span>' if game_names and log.game in game_names else ""
         rows.append(f'<li><a href="{base}/{log.path}">{date_seal(log.date)}<span class="t">{escape(log.title)}</span>{game}</a></li>')
     return f'<ul class="patch">{"".join(rows)}</ul>'
+
+
+def log_nav(base: str, older: LogEntry | None, newer: LogEntry | None) -> str:
+    """기록 글 끝의 넘김 줄: 같은 게임의 이전 기록과 다음 기록. 둘 다 없으면 ''."""
+    def link(cls: str, label: str, log: LogEntry | None) -> str:
+        if log is None:
+            return ""
+        day = log.date[5:].replace("-", ".")
+        return f'<a class="{cls}" href="{base}/{log.path}"><small>{label} · {escape(day)}</small><span>{escape(log.title)}</span></a>'
+    links = link("older", "이전 기록", older) + link("newer", "다음 기록", newer)
+    return f'<nav class="log-nav" aria-label="기록 넘기기">{links}</nav>' if links else ""
 
 
 def latest_card(base: str, log: LogEntry | None, game_name: str, picture: str = "") -> str:

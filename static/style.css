@@ -20,7 +20,8 @@
 
 * { box-sizing: border-box; }
 html { font-size: 16px; -webkit-text-size-adjust: 100%; }
-body { margin: 0; background: var(--ink); color: var(--baek); font-family: var(--sans); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+/* 한글은 낱말 사이에서만 줄을 바꾼다(낱말 가운데가 잘려 한 글자만 다음 줄로 넘어가지 않게). 화면보다 긴 낱말은 그래도 끊는다. */
+body { margin: 0; background: var(--ink); color: var(--baek); font-family: var(--sans); line-height: 1.75; word-break: keep-all; overflow-wrap: break-word; -webkit-font-smoothing: antialiased; }
 img, video { max-width: 100%; }
 a { color: inherit; }
 h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700; }
@@ -38,7 +39,9 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 .site-header.solid, .k-paper .site-header { background: var(--ink); box-shadow: 0 1px 0 var(--line-ink); }
 .brand { display: inline-flex; align-items: center; min-height: 44px; position: relative; z-index: 2; }
 .brand img.brand-logo { height: 21px; width: auto; display: block; }
-.dots { display: flex; margin-left: auto; gap: 9px; align-items: center; padding: 0 6px; }
+.dots { display: flex; margin-left: auto; gap: 9px; align-items: center; padding: 0 6px; transition: opacity 0.2s ease; }
+/* 한지 구간(마무리 폭)에서는 가리킬 폭이 없으니 넘김 점을 거둔다 */
+.js .site-header.solid .dots { opacity: 0; }
 .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--baek); opacity: 0.35; transition: opacity 0.2s ease, background-color 0.2s ease; }
 .dots i.on { opacity: 1; background: var(--hwang); }
 .menu-toggle { margin-left: auto; position: relative; z-index: 2; min-width: 56px; min-height: 44px; padding: 0 12px; font: inherit; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.08em; color: var(--baek); background: transparent; border: 0; cursor: pointer; }
@@ -89,14 +92,14 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 .panel-pic, .panel-blur { position: absolute; display: block; }
 .panel-cover .panel-pic { inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
 .panel-blur { left: -10%; top: -10%; width: 120%; height: 120%; max-width: none; object-fit: cover; filter: blur(24px) saturate(1.15) brightness(0.62); }
-.panel-frame .panel-pic { left: 50%; top: calc(var(--head) + 7%); width: min(100%, 760px); height: 50%; object-fit: cover; transform: translateX(-50%); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45); }
+.panel-frame .panel-pic { left: 50%; top: calc(var(--head) + 5%); width: min(100%, 760px); height: 54%; object-fit: cover; transform: translateX(-50%); box-shadow: 0 18px 44px rgba(0, 0, 0, 0.45); }
 .panel::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(270deg, rgba(16, 26, 46, 0.7) 0, rgba(16, 26, 46, 0) 96px), linear-gradient(180deg, rgba(16, 26, 46, 0.5) 0%, rgba(16, 26, 46, 0.06) 26%, rgba(16, 26, 46, 0.12) 52%, rgba(16, 26, 46, 0.95) 88%); }
 .panel .vt { position: absolute; z-index: 2; top: calc(var(--head) + 26px); right: 18px; margin: 0; writing-mode: vertical-rl; font-size: clamp(2.6rem, 13vw, 3.6rem); line-height: 1.1; letter-spacing: 0.1em; color: var(--baek); text-shadow: 0 2px 16px rgba(0, 0, 0, 0.6), 0 0 2px rgba(0, 0, 0, 0.5); }
 .vt small { font-size: 0.3em; letter-spacing: 0.3em; margin-top: 1em; opacity: 0.9; }
 .panel > .seal { position: absolute; z-index: 2; top: calc(var(--head) + 30px); left: 18px; writing-mode: vertical-rl; padding: 8px 6px; font-size: 0.86rem; letter-spacing: 0.14em; transform: rotate(-4deg); }
 .cap { position: relative; z-index: 2; width: 100%; display: grid; gap: 10px; justify-items: start; padding: 0 22px calc(34px + env(safe-area-inset-bottom)); }
 .cap small { color: var(--hwang); font-size: 0.76rem; font-weight: 600; letter-spacing: 0.18em; }
-.cap p { margin: 0; max-width: 26em; font-size: 1.04rem; line-height: 1.6; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
+.cap p { margin: 0; max-width: 26em; font-size: 1.04rem; line-height: 1.6; text-wrap: balance; text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5); }
 .panel-clip { display: block; width: min(64%, 300px); aspect-ratio: 16 / 9; object-fit: cover; background: var(--ink); border: 1px solid rgba(243, 238, 226, 0.7); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45); margin-bottom: 4px; }
 
 /* 게임 페이지 맨 위의 폭: 아래 한지가 살짝 보이게 */
@@ -156,6 +159,9 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 .paper h2::before { content: ""; display: inline-block; width: 9px; height: 9px; margin-right: 10px; background: var(--jeok); vertical-align: 0.12em; }
 .paper h3 { margin: 1.6em 0 0.4em; font-size: 1.08rem; }
 .paper p, .paper ul, .paper ol { margin: 0 0 14px; }
+/* 마지막 줄에 낱말 하나만 남지 않게(되는 브라우저에서만) */
+.paper p, .paper li, .site-footer p { text-wrap: pretty; }
+.lead, .cheer, .job span { text-wrap: balance; }
 .article ul, .article ol { padding-left: 1.25em; }
 .article li { margin-bottom: 4px; }
 .article figure, .plate { margin: 0 0 22px; }
@@ -234,11 +240,19 @@ thead th { border-top: 0; color: var(--cheong); font-size: 0.84rem; letter-spaci
 .play-video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: var(--ink); border: 1px solid var(--ink); cursor: pointer; }
 .play-video[controls] { cursor: auto; }
 .slides { position: relative; overflow: hidden; border: 1px solid var(--ink); background: var(--ink); }
+/* 기본은 전부 차례로 보이는 꼴(스크립트 없음, 움직임 줄이기 = .still). 움직여도 될 때만 겹쳐 두고 천천히 바꾼다. */
 .slides img { display: block; width: 100%; height: auto; border: 0; }
-html:not(.js) .slides img + img { display: none; }
-.js .slides { aspect-ratio: 16 / 9; }
-.js .slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.8s ease; }
-.js .slides img.on { opacity: 1; }
+.slides img + img { margin-top: 8px; }
+.js .slides:not(.still) { aspect-ratio: 16 / 9; }
+.js .slides:not(.still) img { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; object-fit: cover; opacity: 0; transition: opacity 0.8s ease; }
+.js .slides:not(.still) img.on { opacity: 1; }
+.plate figcaption { line-height: 1.5; }
+.slide-note { display: block; margin-bottom: 2px; font-weight: 600; color: var(--ink); }
+html:not(.js) .slide-note, .js .slides.still + figcaption .slide-note { display: none; }
+@media (max-width: 600px) { .slide-note { min-height: 3em; } }
+/* 늦게 받는 그림: 스크립트가 꺼져 있으면 빈 자리 대신 noscript 안의 그림이 보인다 */
+html:not(.js) img[data-src] { display: none; }
+.paper img[data-src] { background: rgba(16, 26, 46, 0.06); }
 .leaf { padding: 34px 0 38px; border-top: 1px solid var(--line); }
 .leaf h2 { margin-top: 0; }
 .leaf .article, .leaf > .wrap > :last-child { margin-bottom: 0; }
@@ -269,6 +283,15 @@ html:not(.js) .slides img + img { display: none; }
 .log-head h1 { grid-column: 1 / -1; margin: 0; }
 .game-strip { justify-self: start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; background: var(--ink); font-size: 0.86rem; font-weight: 700; letter-spacing: 0.08em; text-decoration: none; }
 .paper .game-strip { color: var(--baek); }
+.log-nav { display: grid; gap: 10px; margin: 26px 0 10px; }
+.log-nav a { display: grid; gap: 2px; min-height: 64px; padding: 12px 14px; border: 1.5px solid var(--ink); text-decoration: none; }
+.paper .log-nav a { color: var(--ink); }
+.log-nav small { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.06em; color: var(--cheong); }
+.log-nav span { font-weight: 700; line-height: 1.45; }
+.log-nav a:hover { box-shadow: 4px 4px 0 var(--ink); }
+.log-nav .newer { text-align: right; }
+.article .cta-row { column-gap: 22px; row-gap: 0; }
+@media (min-width: 700px) { .log-nav { grid-template-columns: 1fr 1fr; } .log-nav .newer:first-child { grid-column: 2; } }
 
 /* ── 게임 목록 ── */
 .game-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 18px; margin-top: 14px; }
@@ -295,6 +318,12 @@ html:not(.js) .slides img + img { display: none; }
 .footer-nav a:hover { color: var(--hwang); }
 .footer-meta a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
 .attribution { font-size: 0.82rem; }
+
+/* 페이지를 넘길 때(첫 화면 → 게임 → 기록) 뚝 끊기지 않고 겹쳐 바뀐다. 되는 브라우저에서만, 머리는 제자리에 둔다. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  .site-header { view-transition-name: site-header; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

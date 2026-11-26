@@ -15,10 +15,4 @@ order: 0
 
 ## 개발 중 화면
 
-3D로 만든 모델을 도트 그림으로 구워 넣은 실제 게임 화면입니다. 글자와 버튼은 개발용이라 바뀝니다.
-
-![이야기 마을에서 이야기보따리 장수 앞에 모인 파티]({{base}}/static/art/games/iyagi/village.webp)
-
-![「호랑이와 곶감」 사냥터에서 곶감 도깨비들과 싸우는 파티]({{base}}/static/art/games/iyagi/hunting.webp)
-
-![사냥터 끝에서 어수룩한 호랑이와 마주친 장면]({{base}}/static/art/games/iyagi/tiger.webp)
+위에 보이는 화면은 3D로 만든 모델을 도트 그림으로 구워 넣은 실제 게임 화면입니다. 글자와 버튼은 개발용이라 바뀝니다.
