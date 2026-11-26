@@ -109,6 +109,10 @@ class ListPiecesTest(unittest.TestCase):
         self.assertIn(f'<img src="{B}/static/art/c.webp" alt="" loading="lazy">', html)
         self.assertIn('<span class="name">curvy(가칭)</span>', html)
         self.assertEqual(other_games_rail(B, [TAMNA], "tamna"), "")
+        # 세로 화면용 그림이 있으면 세로로 선 작은 폭에는 그 그림을 쓴다
+        tall = other_games_rail(B, [{**TAMNA, "card_image": "static/art/wide.webp", "hero_media_mobile": "static/art/tall.webp"}, CURVY], "curvy")
+        self.assertIn(f'<img src="{B}/static/art/tall.webp" alt="" loading="lazy">', tall)
+        self.assertNotIn("wide.webp", tall)
 
 
 class TitleFontTest(SiteTest):

@@ -51,7 +51,7 @@ def other_games_rail(base: str, games: list[dict], current: str) -> str:
     cards = ""
     for g in others:
         href, rel = _game_href(base, g)
-        img = g.get("card_image", "")
+        img = g.get("hero_media_mobile") or g.get("card_image", "")   # 세로로 선 폭이라 세로 화면용 그림이 있으면 그것
         pic = f'<img src="{base}/{escape(img)}" alt="" loading="lazy">' if img else ""
         head, _ = split_name(g["name"])
         cards += (f'<a class="mini-panel" href="{href}"{rel} data-goatcounter-click="other-{escape(g["slug"])}">{pic}'

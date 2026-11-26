@@ -7,6 +7,7 @@
   --baek: #f3eee2;     /* 백(한지) */
   --cheong: #1f4f8a;   /* 청: 링크·강조 */
   --jeok: #c7402d;     /* 적: 도장 */
+  --jeok-ink: #a3301d; /* 도장 글자: 한지 위 작은 글자가 읽히게 조금 짙게(대비 4.5 이상) */
   --hwang: #e3b43c;    /* 황: 단추 */
   --line: #c9bfa7;                       /* 한지 위 줄 */
   --line-ink: rgba(243, 238, 226, 0.2);  /* 먹 위 줄 */
@@ -77,7 +78,7 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 .more::after { content: "→"; margin-left: 0.35em; }
 
 /* ── 도장 ── */
-.seal { display: inline-block; border: 2px solid var(--jeok); color: var(--jeok); background: rgba(243, 238, 226, 0.94); line-height: 1.2; }
+.seal { display: inline-block; border: 2px solid var(--jeok); color: var(--jeok-ink); background: rgba(243, 238, 226, 0.94); line-height: 1.2; }
 .seal-date { display: inline-grid; justify-items: center; min-width: 58px; padding: 5px 7px 4px; transform: rotate(-3deg); }
 .seal-date b { font-size: 1.02rem; letter-spacing: 0.02em; }
 .seal-date i { font-style: normal; font-size: 0.64rem; letter-spacing: 0.14em; }
@@ -170,7 +171,7 @@ table { border-collapse: collapse; width: 100%; font-size: 0.92rem; }
 .tablewrap table { min-width: 540px; }
 th, td { padding: 10px 12px; text-align: left; vertical-align: top; border-top: 1px solid var(--line); }
 thead th { border-top: 0; color: var(--cheong); font-size: 0.84rem; letter-spacing: 0.04em; white-space: nowrap; }
-.status { display: inline-block; white-space: nowrap; padding: 1px 8px; border: 1.5px solid var(--jeok); color: var(--jeok); font-size: 0.8rem; font-weight: 700; }
+.status { display: inline-block; white-space: nowrap; padding: 1px 8px; border: 1.5px solid var(--jeok); color: var(--jeok-ink); font-size: 0.8rem; font-weight: 700; }
 .note { padding: 10px 14px; border-left: 3px solid var(--cheong); }
 .notice li { color: var(--muted); }
 .checklist { list-style: none; padding-left: 0; }
@@ -278,7 +279,7 @@ html:not(.js) .slides img + img { display: none; }
 .game-card p { margin: 0 0 10px; font-size: 0.92rem; line-height: 1.55; color: var(--muted); }
 .game-card p.tags { margin: 0; }
 .tag { display: inline-block; margin: 0 4px 4px 0; padding: 1px 8px; border: 1.5px solid var(--line); font-size: 0.78rem; font-weight: 600; color: var(--muted); }
-.tag.dev, .tag.live { border-color: var(--jeok); color: var(--jeok); }
+.tag.dev, .tag.live { border-color: var(--jeok); color: var(--jeok-ink); }
 
 /* ── 꼬리 ── */
 .site-footer { background: var(--ink); color: var(--muted-ink); font-size: 0.9rem; }
