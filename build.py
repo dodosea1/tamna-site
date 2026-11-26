@@ -385,12 +385,16 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
     has_tester = any(p.slug == "together" for p in game_pages.get("tamna", []))
 
     # 스튜디오 첫 화면
+    # 다음 소식: 테스트 알림은 탐라 것(같이하기 페이지가 있을 때), 스레드는 스튜디오 계정.
+    home_follow = (follow_block(base, tamna, threads_url, has_tester) if tamna else "") + cheer_line(base, "support" in titles)
     index_ctx = {
         **common,
         "cards": cards,
-        "latest_logs": "".join(_log_link(base, log, game_names) for log in logs[:6]) or "<li>아직 없습니다</li>",
+        "latest_logs": "".join(_log_link(base, log, game_names, thumb=True) for log in logs[:6]) or "<li>아직 없습니다</li>",
+        "live": live_line(logs, date.today()),
+        # 후원은 상자 대신 아래쪽 한 줄만 둔다(설계 5-5). 둘 다 없으면 구역을 두지 않는다.
+        "home_follow": f'<section class="wrap home-follow">{home_follow}</section>' if home_follow else "",
         "studio_boxes": "".join(box for slug, box in (
-            ("support", f'<div class="box"><p class="eyebrow">후원</p><h3>만드는 시간을 응원해 주세요</h3><p>모든 게임에 함께 쓰입니다. 받은 금액과 쓴 곳은 후원 페이지에 공개합니다.</p><a class="btn ghost small" href="{base}/support/">후원 방법 보기</a></div>'),
             ("feedback", f'<div class="box"><p class="eyebrow">의견</p><p>어느 게임에 대한 의견인지 골라서 남길 수 있습니다.</p><a class="btn ghost small" href="{base}/feedback/">의견 보내기</a></div>'),
         ) if slug in titles),
         "hero_cta": (f'<a class="btn" href="{base}/games/tamna/together/">탐라 테스터 신청</a>' if has_tester

@@ -231,5 +231,48 @@ class GamePageTest(SiteTest):
         self.assertIn(f'<figure class="game-shot"><img src="{B}/static/art/cards/curvy-800.webp" alt="" loading="eager"></figure>', page)
 
 
+class LogPageTest(SiteTest):
+    def test_log_page_ends_with_other_games(self):
+        out = self.build()
+        page = self.read(out, "log/tamna/2026-11-07/index.html")
+        rail = rail_of(page)
+        self.assertIn("ORN의 다른 게임", rail)
+        self.assertIn(f'href="{B}/games/curvy/"', rail)
+        self.assertNotIn(f'href="{B}/games/tamna/"', rail)
+        self.assertLess(page.index("</article>"), page.index("ORN의 다른 게임"))
+        # 다른 게임의 기록에서는 그 게임이 빠지고 탐라가 들어온다
+        curvy = rail_of(self.read(out, "log/curvy/2026-11-07/index.html"))
+        self.assertIn(f'href="{B}/games/tamna/"', curvy)
+        self.assertNotIn(f'href="{B}/games/curvy/"', curvy)
+        # 옛 주소 넘김 쪽은 그대로
+        self.assertNotIn("ORN의 다른 게임", self.read(out, "log/2026-11-07/index.html"))
+
+
+class HomeTest(SiteTest):
+    def test_home_live_line_rail_and_cheer(self):
+        home = self.read(self.build(full), "index.html")
+        self.assertIn('<p class="live">', home)
+        self.assertIn('<time data-rel datetime="2026-11-07">', home)
+        start = home.index('<div class="rail')
+        rail = home[start:home.index("</section>", start)]
+        for slug in ("tamna", "curvy", "gohyang"):
+            self.assertIn(f'data-goatcounter-click="card-{slug}"', rail)
+        self.assertIn("다음 소식 받기", home)
+        self.assertIn('data-goatcounter-click="tester-tamna"', home)
+        # 응원은 한 줄만. 옛 후원 상자는 없다.
+        self.assertEqual(home.count("개발 응원하기"), 1)
+        self.assertNotIn("만드는 시간을 응원해 주세요", home)
+        self.assertNotIn("후원 방법 보기", home)
+        # 살아 있음 줄은 카드보다 위
+        self.assertLess(home.index('<p class="live">'), start)
+
+    def test_home_without_threads_or_support_hides_follow_and_cheer(self):
+        home = self.read(self.build(), "index.html")
+        self.assertNotIn("다음 소식 받기", home)
+        self.assertNotIn("개발 응원하기", home)
+        self.assertNotIn("home-follow", home)  # 빈 칸(여백만 있는 구역)을 남기지 않는다
+        self.assertIn("의견 보내기", home)  # 의견 상자는 그대로
+
+
 if __name__ == "__main__":
     unittest.main()
