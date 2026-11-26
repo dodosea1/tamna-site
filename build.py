@@ -457,7 +457,8 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         media = "".join(_media_html(base, m) for m in log.media)
         body = md_to_html(log.body_md)
         content = render_template("log.html", {**common, "date": log.date, "title": log.title, "media": media, "body": body,
-                                               "game_name": game_names[log.game], "game_slug": log.game}, templates)
+                                               "game_name": game_names[log.game], "game_slug": log.game,
+                                               "other_games": other_games_rail(base, games, log.game)}, templates)
         image = next((m for m in log.media if m.lower().endswith(IMAGE_EXT)), "")
         write_page(log.path, page_html(f"{log.date} {log.title}", content, path=log.path, description=_plain(_excerpt(log)), image=image, og_type="article", published=log.date))
 
