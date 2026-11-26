@@ -134,7 +134,9 @@ class BuiltPageTest(unittest.TestCase):
     def test_page_with_account_has_copy_button_and_script(self):
         html = self._build(donate_bank="토스뱅크", donate_account="1002-2516-1071")
         self.assertIn('class="button copy"', html)
-        self.assertIn("navigator.clipboard", html)
+        # 복사 동작은 2026-11-26 리뉴얼에서 인라인 스크립트에서 static/site.js로 옮겼다.
+        self.assertRegex(html, r'static/site[.]js[?]v=[0-9a-f]{8}" defer></script>')
+        self.assertIn("navigator.clipboard", Path("static/site.js").read_text(encoding="utf-8"))
         self.assertNotIn("<p><div", html)
 
     def test_page_without_direct_link_has_no_qr(self):

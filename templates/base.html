@@ -2,7 +2,8 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101a2e">
 <title>{{page_title}}</title>
 <meta name="description" content="{{description}}">
 <link rel="canonical" href="{{canonical}}">
@@ -19,63 +20,31 @@
 <link rel="icon" href="{{base}}/static/brand/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="{{base}}/static/brand/favicon.svg">
 <link rel="apple-touch-icon" href="{{base}}/static/brand/apple-touch-icon.png">
-<link rel="stylesheet" href="{{base}}/static/style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css" media="(min-width: 901px)">
+<link rel="stylesheet" href="{{base}}/static/style.css?v={{css_v}}">
+{{title_font}}
 <link rel="alternate" type="application/rss+xml" title="{{site_title}} 개발 기록" href="{{base}}/feed.xml">
 </head>
-<body>
+<body class="k-{{kind}}">
+<script>document.documentElement.classList.add('js')</script>
 <header class="site-header">
-  <div class="wrap">
-    <a class="brand" href="{{base}}/">{{brand}}</a>
-    <nav class="site-nav" id="site-nav">
-      {{nav}}
-    </nav>
-    {{header_follow}}
-    <button class="menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">메뉴</button>
-  </div>
+  <a class="brand" href="{{base}}/">{{brand}}</a>
+  {{dots}}
+  <button class="menu-toggle" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="site-nav">메뉴</button>
+  <nav class="site-nav" id="site-nav">{{nav}}{{header_follow}}</nav>
 </header>
 <main>
-{{band}}{{content}}
+{{content}}
 </main>
 <footer class="site-footer">
+  <div class="obang" aria-hidden="true"></div>
   <div class="wrap">
-    <p class="footer-nav">{{footer_nav}}</p>
-    <p>{{site_title}} · {{year}} · {{footer_links}}<a href="{{base}}/feed.xml">RSS</a></p>
+    <p class="footer-nav">{{footer_menu}}</p>
+    <p class="footer-meta">{{site_title}} · {{year}} · {{footer_links}}<a href="{{base}}/feed.xml">RSS</a></p>
     <p class="attribution">사이트의 그림과 화면은 개발 중인 게임의 것이며 바뀔 수 있습니다.</p>
   </div>
 </footer>
-<script>
-document.querySelectorAll('.email').forEach(function (e) { e.textContent = e.dataset.u + '@' + e.dataset.d; });
-document.querySelectorAll('.copy').forEach(function (b) {
-  b.addEventListener('click', function () {
-    var label = b.textContent;
-    navigator.clipboard.writeText(b.dataset.copy).then(function () {
-      b.textContent = '복사했습니다';
-      setTimeout(function () { b.textContent = label; }, 2000);
-    });
-  });
-});
-var toggle = document.querySelector('.menu-toggle');
-var nav = document.getElementById('site-nav');
-if (toggle && nav) {
-  toggle.addEventListener('click', function () {
-    var open = nav.classList.toggle('open');
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    toggle.textContent = open ? '닫기' : '메뉴';
-  });
-}
-document.querySelectorAll('.play-video').forEach(function (v) {
-  function toggle() { if (v.paused) { v.play(); } else { v.pause(); } }
-  v.addEventListener('click', toggle);
-  v.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
-});
-if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-  document.querySelectorAll('video[autoplay]').forEach(function (v) { v.removeAttribute('autoplay'); v.pause(); v.controls = true; });
-}
-var header = document.querySelector('.site-header');
-function onScroll() { header.classList.toggle('scrolled', window.scrollY > 40); }
-window.addEventListener('scroll', onScroll, { passive: true });
-onScroll();
-</script>
+<script src="{{base}}/static/site.js?v={{js_v}}" defer></script>
 {{analytics}}
 </body>
 </html>

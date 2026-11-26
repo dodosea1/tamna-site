@@ -1,37 +1,16 @@
-<section class="wrap studio-hero">
-  <p class="eyebrow">{{site_title}} · 1인 게임 스튜디오</p>
-  <h1>{{tagline}}</h1>
-  <p class="lead">만드는 과정을 날마다 기록하고, 받은 의견과 반영한 것을 공개합니다. 지금 가장 많이 손대는 게임은 탐라입니다.</p>
-  <div class="actions">
-    {{hero_cta}}
-    <a class="btn ghost" href="{{base}}/log/">전체 개발 기록</a>
-  </div>
-</section>
-
-<section class="wrap">
-  <p class="eyebrow">게임</p>
-  <div class="game-cards">{{cards}}</div>
-</section>
-
-<section class="wrap now">
-  <div class="two">
-    <div>
-      <p class="eyebrow">최근 개발 기록</p>
-      <ul class="log-list">{{latest_logs}}</ul>
-      <a class="more" href="{{base}}/log/">전체 기록 보기</a>
-    </div>
-    <div>
-      {{studio_boxes}}
-      <div class="box">
-        <p class="eyebrow">이달의 정리</p>
-        <ul class="log-list">{{latest_monthly}}</ul>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="wrap tail">
-  <p class="eyebrow">English</p>
-  <p class="summary-en">{{summary_en}}</p>
-  <p class="cta-row"><a class="btn ghost small" href="{{base}}/feed.xml">RSS 구독</a> {{threads}}</p>
+<div class="byeongpung">
+{{panels}}
+</div>
+<div class="obang" aria-hidden="true"></div>
+<section class="end paper" id="end">
+<div class="wrap narrow">
+<p class="eyebrow">{{site_title}} · 1인 게임 스튜디오</p>
+<h1 class="sf">{{tagline}}</h1>
+<p class="lead">만드는 과정을 날마다 기록하고, 받은 의견과 반영한 것을 공개합니다.</p>
+{{live}}
+{{latest}}
+{{patch}}
+{{home_follow}}
+<p class="summary-en" lang="en">{{summary_en}}</p>
+</div>
 </section>

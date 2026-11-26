@@ -1,2 +1,5 @@
 markdown>=3.6,<4
 segno>=1.6,<2
+# build only (tools/sitegen/thumbs.py): shrinks the newest log's picture to 640x360 for the home page card.
+# Nothing from it ships in the site. Without it the build still passes; that card just has no picture.
+pillow>=10,<13

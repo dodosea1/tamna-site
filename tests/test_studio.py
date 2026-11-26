@@ -51,17 +51,23 @@ class StudioTest(unittest.TestCase):
 
     def test_external_card_links_out_and_gets_no_page(self):
         out = self.build()
+        # 2026-11-26 대개편: 첫 화면은 병풍 폭, 카드는 게임 목록(/games/)에 있다.
         home = self.read(out, "index.html")
-        self.assertIn('<a class="game-card" href="https://gohyang.town" rel="noopener">', home)
+        self.assertIn('<a class="btn" href="https://gohyang.town" data-goatcounter-click="card-gohyang" rel="noopener">gohyang.town ↗</a>', home)
+        self.assertIn('<a class="btn" href="/tamna-site/games/curvy/" data-goatcounter-click="card-curvy">이 게임 보기</a>', home)
         self.assertFalse((out / "games/gohyang").exists())
-        self.assertIn('<a class="game-card" href="/tamna-site/games/curvy/">', home)
-        # 그림이 없는 게임은 지어내지 않고 자리만
-        self.assertIn("그림 준비 중", home)
+        cards = self.read(out, "games/index.html")
+        self.assertIn('<a class="game-card" href="https://gohyang.town" rel="noopener" data-goatcounter-click="card-gohyang">', cards)
+        self.assertIn('<a class="game-card" href="/tamna-site/games/curvy/" data-goatcounter-click="card-curvy">', cards)
+        # 그림이 없는 게임은 지어내지 않는다: 목록 카드는 자리만, 첫 화면 폭은 먹 바탕만
+        self.assertIn("그림 준비 중", cards)
+        self.assertNotIn("그림 준비 중", home)
 
     def test_home_is_studio_and_brand_is_logo_image(self):
         out = self.build()
         home = self.read(out, "index.html")
-        self.assertIn('class="wrap studio-hero"', home)
+        self.assertIn('<body class="k-home">', home)
+        self.assertIn('<div class="byeongpung">', home)
         self.assertIn('<img class="brand-logo" src="/tamna-site/static/brand/logo-horizontal.svg"', home)
         for icon in ('href="/tamna-site/static/brand/favicon.ico"', 'href="/tamna-site/static/brand/favicon.svg"',
                      'rel="apple-touch-icon" href="/tamna-site/static/brand/apple-touch-icon.png"'):
