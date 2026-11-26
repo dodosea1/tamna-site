@@ -228,6 +228,24 @@ def _load_games(root: Path) -> list[dict]:
     return games
 
 
+def _check_game_media(games: list[dict], root: Path, static: Path) -> None:
+    """선택 키 검사. card_video는 media/ 아래 .mp4, slides는 static/ 아래 그림 2개 이상. 없는 파일을 가리키면 멈춘다."""
+    for g in games:
+        video = g.get("card_video")
+        if video is not None:
+            ok = isinstance(video, str) and video.startswith("media/") and video.lower().endswith(".mp4") and ".." not in video.split("/")
+            if not ok or not (root / video).is_file():
+                raise ValueError(f"data/games.json: card_video는 media/ 아래에 있는 .mp4 파일이어야 합니다: {g['slug']}: {video}")
+        slides = g.get("slides")
+        if slides is not None:
+            if not isinstance(slides, list) or len(slides) < 2:
+                raise ValueError(f"data/games.json: slides는 그림 2개 이상의 목록이어야 합니다: {g['slug']}")
+            for s in slides:
+                ok = isinstance(s, str) and s.startswith("static/") and ".." not in s.split("/")
+                if not ok or not (static / s[len("static/"):]).is_file():
+                    raise ValueError(f"data/games.json: slides의 그림은 static/ 아래에 있어야 합니다: {g['slug']}: {s}")
+
+
 def _log_filters(base: str, games: list[dict], logs: list[LogEntry], current: str) -> str:
     """개발 기록 게임 고르기. 기록이 있는 게임만 링크."""
     has = {log.game for log in logs}
@@ -254,6 +272,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         static = Path(__file__).parent / "static"
 
     games = _load_games(root)
+    _check_game_media(games, root, static)
     game_by_slug = {g["slug"]: g for g in games}
     game_names = {g["slug"]: g["name"] for g in games}
     logs = load_logs(root / "content" / "log")

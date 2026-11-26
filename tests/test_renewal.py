@@ -85,5 +85,55 @@ class PiecesTest(unittest.TestCase):
         self.assertNotIn('a"b', html)
 
 
+class SiteTest(unittest.TestCase):
+    def make(self, edit=None):
+        tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
+        root = Path(tmp.name) / "root"; shutil.copytree(FX, root)
+        if edit:
+            edit(root)
+        return root, Path(tmp.name) / "out"
+
+    def build(self, edit=None):
+        root, out = self.make(edit)
+        build_site(root, out, base=B)
+        return out
+
+    def read(self, out, rel):
+        return (out / rel).read_text(encoding="utf-8")
+
+    @staticmethod
+    def games(root, change):
+        path = root / "data/games.json"
+        games = json.loads(path.read_text(encoding="utf-8"))
+        change({g["slug"]: g for g in games})
+        path.write_text(json.dumps(games, ensure_ascii=False), encoding="utf-8")
+
+
+class GameKeysTest(SiteTest):
+    def test_games_json_optional_keys_validated(self):
+        bad = (
+            ("card_video", "media/x.mp4"),                      # 파일 없음
+            ("card_video", "media/log/2026-11-07-hunter-sweep.gif"),  # mp4 아님
+            ("slides", ["static/art/cards/curvy-800.webp"]),    # 1개
+            ("slides", ["static/art/cards/curvy-800.webp", "static/art/none.webp"]),  # 없는 그림
+            ("slides", ["static/art/cards/curvy-800.webp", "media/log/2026-11-07-hunter-sweep.gif"]),  # static 밖
+            ("slides", ["static/art/cards/curvy-800.webp", "static/../build.py"]),
+        )
+        for key, value in bad:
+            root, out = self.make(lambda r, key=key, value=value: self.games(r, lambda g: g["tamna"].update({key: value})))
+            with self.assertRaises(ValueError, msg=f"{key}={value}") as caught:
+                build_site(root, out, base=B)
+            self.assertIn(key, str(caught.exception))
+
+    def test_valid_optional_keys_build(self):
+        def ok(root):
+            (root / "media/previews").mkdir(parents=True)
+            (root / "media/previews/t.mp4").write_bytes(b"0")
+            self.games(root, lambda g: g["tamna"].update({"card_video": "media/previews/t.mp4"}))
+            self.games(root, lambda g: g["curvy"].update({"slides": ["static/art/cards/curvy-800.webp", "static/art/cards/iyagi-800.webp"]}))
+        home = self.read(self.build(ok), "index.html")
+        self.assertIn(f'data-src="{B}/media/previews/t.mp4"', home)
+
+
 if __name__ == "__main__":
     unittest.main()
