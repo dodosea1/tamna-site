@@ -298,7 +298,8 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "footer_links": f'<a href="{base}/privacy/">개인정보 처리방침</a> · ' if has_privacy else "",
         "footer_nav": footer_nav,
         # 꼬리에는 위쪽 메뉴 링크도 모두 둔다(스크립트가 꺼진 휴대폰에서는 메뉴를 열 수 없다).
-        "footer_menu": nav + "".join(f'<a href="{base}/{slug}/">{escape(titles[slug])}</a>' for slug in footer_slugs),
+        "footer_menu": (nav + "".join(f'<a href="{base}/{slug}/">{escape(titles[slug])}</a>' for slug in footer_slugs)
+                        + (f'<a href="{escape(threads_url)}" rel="noopener">스레드 팔로우</a>' if threads_url else "")),
         "header_follow": f'<a class="follow" href="{escape(threads_url)}" rel="noopener">스레드 팔로우</a>' if threads_url else "",
         "site_title": site["title"],
         "og_image": site.get("site_url", "").rstrip("/") + "/static/art/og-studio.jpg",
@@ -383,7 +384,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         "live": live_line(logs, datetime.now(timezone(timedelta(hours=9))).date()),
         "latest": latest_card(base, latest, game_names[latest.game], card_picture(latest)) if latest else "",
         # 카드로 보여 준 기록 다음 세 개. 기록이 없으면 칸을 통째로 숨긴다.
-        "patch": (f'<div class="recent"><p class="eyebrow">최근 기록</p>{recent}<a class="more" href="{base}/log/">전체 기록 보기</a></div>' if logs else ""),
+        "patch": (f'<div class="recent">{f"<p class=\"eyebrow\">최근 기록</p>{recent}" if recent else ""}<a class="more" href="{base}/log/">전체 기록 보기</a></div>' if logs else ""),
         # 후원은 한 줄만 둔다. 둘 다 없으면 칸을 두지 않는다.
         "home_follow": f'<div class="home-follow">{home_follow}</div>' if home_follow else "",
     }
@@ -413,7 +414,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             **gfill,
             "game_name": g["name"],
             "game_slug": slug,
-            "panel": panel(base, g, heading="h1", eager=True, cta=hero_cta),
+            "panel": panel(base, g, heading="h1", eager=True, cta=hero_cta, wide=True),
             # 근거가 없는 칸은 빈 문자열로 두어 통째로 숨긴다("준비 중"·"아직 없습니다"를 띄우지 않는다).
             "now_block": _now_block(now_lines(g_logs)),
             "screen": f'<section class="screen"><p class="eyebrow">실제 게임 화면</p>{screen}</section>' if screen else "",

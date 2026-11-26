@@ -38,12 +38,11 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 .site-header.solid, .k-paper .site-header { background: var(--ink); box-shadow: 0 1px 0 var(--line-ink); }
 .brand { display: inline-flex; align-items: center; min-height: 44px; position: relative; z-index: 2; }
 .brand img.brand-logo { height: 21px; width: auto; display: block; }
-.dots { display: flex; margin-left: auto; }
-.dots { gap: 9px; align-items: center; padding: 0 6px; }
+.dots { display: flex; margin-left: auto; gap: 9px; align-items: center; padding: 0 6px; }
 .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--baek); opacity: 0.35; transition: opacity 0.2s ease, background-color 0.2s ease; }
 .dots i.on { opacity: 1; background: var(--hwang); }
 .menu-toggle { margin-left: auto; position: relative; z-index: 2; min-width: 56px; min-height: 44px; padding: 0 12px; font: inherit; font-weight: 700; font-size: 0.92rem; letter-spacing: 0.08em; color: var(--baek); background: transparent; border: 0; cursor: pointer; }
-.dots + .site-nav + .menu-toggle { margin-left: 0; }
+.dots + .menu-toggle { margin-left: 0; }
 .site-nav a { color: var(--baek); text-decoration: none; }
 
 @media (max-width: 900px) {
@@ -84,7 +83,9 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 .seal-date i { font-style: normal; font-size: 0.64rem; letter-spacing: 0.14em; }
 
 /* ── 병풍 폭 ── */
-.panel { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: flex-end; height: 100vh; height: 100svh; background: var(--ink); scroll-snap-align: start; }
+.panel { position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: flex-end; height: 100vh; height: 100svh; min-height: 560px; background: var(--ink); scroll-snap-align: start; }
+.panel picture { display: contents; }
+.art-note { position: absolute; z-index: 2; right: 12px; bottom: 8px; font-size: 0.68rem; letter-spacing: 0.04em; color: rgba(243, 238, 226, 0.6); }
 .panel-pic, .panel-blur { position: absolute; display: block; }
 .panel-cover .panel-pic { inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 30%; }
 .panel-blur { left: -10%; top: -10%; width: 120%; height: 120%; max-width: none; object-fit: cover; filter: blur(24px) saturate(1.15) brightness(0.62); }
@@ -101,24 +102,28 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 /* 게임 페이지 맨 위의 폭: 아래 한지가 살짝 보이게 */
 .k-game .panel { height: auto; min-height: 92vh; min-height: 92svh; }
 
-@media (max-width: 900px) {
+@media (max-width: 1099px) {
   /* 첫 화면: 위로 밀면 다음 폭에 붙는다 */
   html:has(body.k-home) { scroll-snap-type: y mandatory; }
   .k-home .end { scroll-snap-align: start; }
   .k-home .end > .wrap { padding-top: calc(var(--head) + 30px); }
   .k-home .site-footer { scroll-snap-align: end; }
 }
-@media (min-width: 901px) {
+@media (min-width: 1100px) {
   /* PC: 폭들이 옆으로 나란히 선 병풍. 마우스를 올리거나 초점을 둔 폭이 넓어진다. */
   .byeongpung { display: flex; height: min(100vh, 860px); min-height: 560px; }
   .byeongpung .panel { flex: 1 1 0; min-width: 0; height: auto; border-left: 1px solid var(--line-ink); transition: flex-grow 0.45s ease; }
   .byeongpung .panel:first-child { border-left: 0; }
   .byeongpung .panel:hover, .byeongpung .panel:focus-within, .byeongpung:not(:hover):not(:focus-within) .panel:first-child { flex-grow: 2.6; }
+  .byeongpung .cap p { font-size: 0.98rem; }
+}
+@media (min-width: 901px) {
   .panel .vt { font-size: 3rem; right: 22px; }
   .panel > .seal { left: 22px; }
   .cap { padding: 0 26px 40px; }
-  .byeongpung .cap p { font-size: 0.98rem; }
   .k-game .panel { min-height: min(88vh, 780px); }
+  .k-game .panel-cover .panel-pic { object-position: 50% 22%; }
+  .k-game .panel::after { background: linear-gradient(270deg, rgba(16, 26, 46, 0.8) 0, rgba(16, 26, 46, 0) 320px), linear-gradient(180deg, rgba(16, 26, 46, 0.5) 0%, rgba(16, 26, 46, 0.06) 26%, rgba(16, 26, 46, 0.12) 52%, rgba(16, 26, 46, 0.95) 88%); }
   .k-game .panel .vt { right: max(28px, calc(50% - 540px)); font-size: 3.6rem; }
   .k-game .panel > .seal { left: max(28px, calc(50% - 540px)); }
   .k-game .cap { max-width: 1120px; margin: 0 auto; }
@@ -134,7 +139,7 @@ h1, h2, h3, .vt, .seal, .sf, .name { font-family: var(--serif); font-weight: 700
 }
 
 /* ── 한지 ── */
-.paper { background: var(--baek); color: var(--ink); }
+.paper { background: var(--baek); color: var(--ink); overflow-wrap: anywhere; }
 .paper a { color: var(--cheong); }
 .paper .btn, .paper .button { color: var(--ink); }
 .paper .btn.ghost { color: var(--ink); }

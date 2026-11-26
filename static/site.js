@@ -11,8 +11,6 @@
   var saveData = !!(navigator.connection && navigator.connection.saveData);
   var motionOK = !reduced && !saveData;
   var canObserve = 'IntersectionObserver' in window;
-  /* 이 파일이 실제로 돌았다는 표시. 폭의 세로 제목·도장을 들어올 때까지 숨기는 CSS는 이 표시가 있을 때만 걸린다. */
-  root.classList.add('ready');
 
   /* 메일 주소: 수집 봇을 피해 스크립트로 조립한다. */
   all('.email').forEach(function (e) { e.textContent = e.dataset.u + '@' + e.dataset.d; });
@@ -32,9 +30,12 @@
   var toggle = doc.querySelector('.menu-toggle');
   var nav = doc.getElementById('site-nav');
   if (toggle && nav) {
+    var behind = all('main, .site-footer');
     var setMenu = function (open) {
       nav.classList.toggle('open', open);
       root.classList.toggle('menu-open', open);
+      /* 메뉴가 덮고 있는 동안 뒤의 본문과 꼬리는 초점도 읽기도 받지 않는다 */
+      behind.forEach(function (el) { el.inert = open; });
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       toggle.setAttribute('aria-label', open ? '메뉴 닫기' : '메뉴 열기');
       toggle.textContent = open ? '닫기' : '메뉴';
@@ -96,6 +97,9 @@
     window.addEventListener('scroll', queueCheck, { passive: true });
     window.addEventListener('resize', queueCheck, { passive: true });
     window.addEventListener('load', checkPanels);
+    /* 이 파일이 여기까지 돌았다는 표시. 폭의 세로 제목·도장을 들어올 때까지 숨기는 CSS는 이 표시가 있을 때만 걸린다.
+       바로 다음 줄에서 지금 보이는 폭에 in을 붙이므로, 제목이 숨겨진 채 남지 않는다. */
+    root.classList.add('ready');
     checkPanels();
   }
 

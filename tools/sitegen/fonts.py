@@ -61,5 +61,6 @@ def title_font_link(chars: str) -> str:
     if not chars or len(chars) > MAX_FONT_CHARS:
         return ""
     href = f"https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&amp;display=swap&amp;text={quote(chars, safe='')}"
-    return (f'<link rel="stylesheet" href="{href}" media="print" onload="this.media=\'all\'">'
-            f'<noscript><link rel="stylesheet" href="{href}"></noscript>')
+    # 글꼴 서버에 어느 페이지에서 왔는지(리퍼러)는 보내지 않는다.
+    return (f'<link rel="stylesheet" href="{href}" referrerpolicy="no-referrer" media="print" onload="this.media=\'all\'">'
+            f'<noscript><link rel="stylesheet" href="{href}" referrerpolicy="no-referrer"></noscript>')

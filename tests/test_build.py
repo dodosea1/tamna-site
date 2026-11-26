@@ -95,9 +95,9 @@ class HeroMobileTest(unittest.TestCase):
             (root / "data" / "games.json").write_text(json.dumps(games, ensure_ascii=False), encoding="utf-8")
             out = Path(tmp) / "out"; build_site(root, out, base="/tamna-site")
             html = (out / "games/tamna/index.html").read_text(encoding="utf-8")
-            # 2026-11-26 대개편: 세로 화면용 그림(hero_media_mobile)이 병풍 폭을 가득 채운다. 2400px 그림은 받지 않는다.
-            self.assertIn('<img class="panel-pic" src="/tamna-site/static/art/key-hero-m-1000.webp" alt="" loading="eager" fetchpriority="high">', html)
-            self.assertNotIn("key-hero-2400.webp", html)
+            # 2026-11-26 대개편: 게임 페이지 맨 위의 폭. 휴대폰은 세로 화면용 그림, 넓은 화면(901px 이상)은 가로 그림.
+            self.assertIn('<picture><source media="(min-width: 901px)" srcset="/tamna-site/static/art/key-hero-2400.webp">'
+                          '<img class="panel-pic" src="/tamna-site/static/art/key-hero-m-1000.webp" alt="" loading="eager" fetchpriority="high"></picture>', html)
             self.assertIn('loading="eager"', html)
 
 

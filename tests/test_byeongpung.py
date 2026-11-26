@@ -395,5 +395,67 @@ class StyleTest(unittest.TestCase):
             self.assertRegex(rule.group(1), rf"(^|[\s,]){tag}\b")
 
 
+class ReviewFixTest(SiteTest):
+    """가지 전체 검토(2026-11-26, 병풍)에서 나온 것."""
+
+    def test_menu_button_comes_before_the_menu_and_page_goes_inert(self):
+        # 메뉴를 열면 다음 Tab이 메뉴 안으로 가야 한다: 버튼이 목록보다 앞. 열린 동안 뒤의 본문은 inert.
+        home = self.read(self.build(), "index.html")
+        self.assertLess(home.index('<button class="menu-toggle"'), home.index('<nav class="site-nav"'))
+        js = Path("static/site.js").read_text(encoding="utf-8")
+        self.assertIn("inert", js)
+
+    def test_game_page_panel_uses_wide_art_on_wide_screens(self):
+        g = {**TAMNA, "hero_media": "static/art/wide.webp", "hero_media_mobile": "static/art/tall.webp"}
+        html = panel(B, g, heading="h1", eager=True, wide=True)
+        self.assertIn(f'<picture><source media="(min-width: 901px)" srcset="{B}/static/art/wide.webp">'
+                      f'<img class="panel-pic" src="{B}/static/art/tall.webp" alt="" loading="eager" fetchpriority="high"></picture>', html)
+        self.assertNotIn("<picture>", panel(B, g))                       # 첫 화면의 좁은 폭은 세로 그림 그대로
+        self.assertNotIn("<picture>", panel(B, {**TAMNA, "hero_media_mobile": "static/art/tall.webp"}, wide=True))
+
+        def art(root):
+            self.games(root, lambda games: games["tamna"].update({"hero_media": "static/art/key-hero-2400.webp", "hero_media_mobile": "static/art/key-hero-m-1000.webp"}))
+        out = self.build(art)
+        self.assertIn(f'<source media="(min-width: 901px)" srcset="{B}/static/art/key-hero-2400.webp">', self.read(out, "games/tamna/index.html"))
+        self.assertNotIn("key-hero-2400.webp", self.read(out, "index.html"))
+
+    def test_panel_says_when_the_picture_is_key_art(self):
+        g = {**TAMNA, "hero_media_mobile": "static/art/tall.webp", "hero_label": "키아트 (민화풍 그림)"}
+        self.assertIn('<span class="art-note">키아트 (민화풍 그림)</span>', panel(B, g))
+        self.assertNotIn("art-note", panel(B, {**TAMNA, "card_image": "static/art/c.webp", "hero_label": "키아트"}))   # 세로 그림을 쓸 때만
+        self.assertNotIn("art-note", panel(B, TAMNA))
+
+    def test_home_with_one_log_has_no_empty_recent_label(self):
+        def one(root):
+            (root / "content/log/2026-11-06.md").unlink()
+            shutil.rmtree(root / "content/log/curvy")
+        home = self.read(self.build(one), "index.html")
+        self.assertEqual(home.count('class="latest"'), 1)
+        self.assertNotIn("최근 기록", home)
+        self.assertNotIn('class="patch"', home)
+        self.assertIn(f'<a class="more" href="{B}/log/">전체 기록 보기</a>', home)
+
+    def test_footer_also_has_the_threads_link(self):
+        home = self.read(self.build(full), "index.html")
+        footer = home[home.index("<footer"):home.index("</footer>")]
+        self.assertIn('rel="noopener">스레드 팔로우</a>', footer)
+        self.assertNotIn("스레드", self.read(self.build(), "index.html").split("<footer")[1])
+
+    def test_title_font_request_sends_no_referrer(self):
+        from tools.sitegen.fonts import title_font_link
+        self.assertEqual(title_font_link("가").count('referrerpolicy="no-referrer"'), 2)
+
+    def test_long_words_wrap_and_short_screens_keep_room(self):
+        css = Path("static/style.css").read_text(encoding="utf-8")
+        self.assertIn("overflow-wrap: anywhere", css)
+        self.assertRegex(css, r"[.]panel [{][^}]*min-height: 5[0-9]{2}px")
+
+    def test_ready_mark_is_set_right_before_the_first_panel_check(self):
+        js = Path("static/site.js").read_text(encoding="utf-8")
+        ready = js.index("classList.add('ready')")
+        self.assertLess(js.index("var checkPanels"), ready)
+        self.assertLess(ready, js.index("/* 영상:"))
+
+
 if __name__ == "__main__":
     unittest.main()

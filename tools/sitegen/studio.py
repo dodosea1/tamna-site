@@ -132,17 +132,24 @@ def _game_href(base: str, g: dict) -> tuple[str, str]:
     return f"{base}/games/{escape(g['slug'])}/", ""
 
 
-def panel(base: str, g: dict, *, heading: str = "h2", eager: bool = False, cta: str | None = None) -> str:
+def panel(base: str, g: dict, *, heading: str = "h2", eager: bool = False, cta: str | None = None, wide: bool = False) -> str:
     """병풍 한 폭: 그림 화면 가득, 세로 제목, 도장, 한 줄 소개.
 
     그림은 세로 화면용(hero_media_mobile)이 있으면 가득 채우고(cover), 카드 그림만 있으면 같은 그림을 흐리게 깐 위에
     또렷하게 한 번 더 둔다(frame). 그림이 없으면 먹 바탕만(bare) 두고 '준비 중' 같은 글을 띄우지 않는다.
+    wide면(게임 페이지 맨 위의 폭) 넓은 화면에서는 가로 그림(hero_media)을 쓴다. 첫 화면의 폭은 PC에서도 좁아 세로 그림 그대로다.
     """
     slug = escape(g["slug"])
     load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
     tall, card = g.get("hero_media_mobile", ""), g.get("card_image", "")
+    note = ""
     if tall:
         mode, pics = "cover", f'<img class="panel-pic" src="{base}/{escape(tall)}" alt="" {load}>'
+        if wide and g.get("hero_media"):
+            pics = f'<picture><source media="(min-width: 901px)" srcset="{base}/{escape(g["hero_media"])}">{pics}</picture>'
+        if g.get("hero_label"):
+            # 게임 화면이 아니라 그림(키아트)이라는 표시
+            note = f'<span class="art-note">{escape(g["hero_label"])}</span>'
     elif card:
         src = f"{base}/{escape(card)}"
         mode = "frame"
@@ -164,7 +171,7 @@ def panel(base: str, g: dict, *, heading: str = "h2", eager: bool = False, cta: 
     platform = f'<small>{escape(g["platform"])}</small>' if g.get("platform") else ""
     return (f'<section class="panel panel-{mode}" id="p-{slug}">{pics}{_vt(g["name"], heading)}'
             f'<span class="seal">{escape(g.get("status", "개발 중"))}</span>'
-            f'<div class="cap">{clip}{platform}<p>{escape(g.get("summary", ""))}</p>{cta}</div></section>')
+            f'<div class="cap">{clip}{platform}<p>{escape(g.get("summary", ""))}</p>{cta}</div>{note}</section>')
 
 
 def date_seal(day: str) -> str:
