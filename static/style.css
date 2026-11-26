@@ -33,8 +33,8 @@ a { color: var(--accent); }
   .menu-toggle { display: inline-flex; }
   .follow { margin-left: auto; padding: 7px 13px; }
   .follow ~ .menu-toggle { margin-left: 0; }
-  .site-nav { display: none; position: absolute; left: 0; right: 0; top: 56px; flex-direction: column; gap: 2px; background: rgba(20, 19, 43, 0.97); padding: 10px 12px 14px; border-radius: 12px; }
-  .site-nav.open { display: flex; }
+  .js .site-nav { display: none; position: absolute; left: 0; right: 0; top: 56px; flex-direction: column; gap: 2px; background: rgba(20, 19, 43, 0.97); padding: 10px 12px 14px; border-radius: 12px; }
+  .js .site-nav.open { display: flex; }
   .site-nav a { padding: 10px 12px; font-size: 1rem; }
   .nico { display: inline-block; }
 }
@@ -238,6 +238,7 @@ button.button:focus-visible { outline: 2px solid currentColor; outline-offset: 2
 .menu-toggle { display: none; }
 @media (max-width: 900px) { .menu-toggle { display: inline-flex; } .site-nav a { min-height: 44px; display: flex; align-items: center; } }
 .more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 6px; }
+.more::after { content: "→"; margin-left: 0.3em; }
 .filters a { display: inline-flex; align-items: center; min-height: 44px; padding: 4px 16px; }
 .footer-nav a, .site-footer p a { display: inline-block; padding: 12px 2px; }
 .crumbs a { display: inline-block; padding: 12px 0; }
@@ -246,7 +247,11 @@ button.button:focus-visible { outline: 2px solid currentColor; outline-offset: 2
 /* 누름 반응 */
 .game-card, .btn, .button, .follow { transition: transform 0.12s ease, border-color 0.2s ease, filter 0.2s ease; }
 .game-card:active, .btn:active, .button:active, .follow:active { transform: scale(0.97); }
-a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* 스크립트가 꺼져 있으면 메뉴를 열 수 없으니, 버튼을 감추고 메뉴를 펼쳐 둔다 */
+html:not(.js) .menu-toggle { display: none; }
+html:not(.js) .site-header .wrap { flex-wrap: wrap; }
+@media (max-width: 900px) { html:not(.js) .site-header { position: static; background: var(--bg); } html:not(.js) .site-nav { order: 3; flex-basis: 100%; margin-left: 0; } }
 
 /* 살아 있음 줄 */
 .live { margin: 20px 0 0; font-size: 0.92rem; color: rgba(241, 232, 212, 0.9); }
@@ -275,7 +280,7 @@ a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid 
 /* 응원 한 줄: 조르지 않는다 */
 .cheer { max-width: 1120px; margin: 0 auto; padding: 0 24px 12px; color: var(--muted); font-size: 0.93rem; }
 .cheer a { display: inline-block; padding: 12px 0; font-weight: 600; }
-.wrap.narrow ~ .cheer { max-width: 780px; }
+.wrap.narrow + .cheer, .wrap.narrow + .other-games + .cheer { max-width: 780px; }
 .home-follow { padding-top: 12px !important; padding-bottom: 28px !important; }
 .home-follow .cheer { padding: 0; margin-top: 10px; }
 
@@ -318,7 +323,7 @@ a:focus-visible, button:focus-visible, video:focus-visible { outline: 2px solid 
 
 /* 휴대폰: 탐라 첫 화면 그림을 낮춰 실제 게임 화면이 첫 화면 안에 들어오게 한다 */
 @media (max-width: 720px) {
-  .hero { height: 58vh; min-height: 400px; }
+  .hero { height: 58vh; min-height: 470px; }
   .hero-text { bottom: 4vh; }
   .now.wrap { padding-top: 28px; }
   .studio-hero { padding-top: 96px !important; }

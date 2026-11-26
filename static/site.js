@@ -50,6 +50,8 @@
     var days = Math.round((Date.parse(today) - Date.parse(t.getAttribute('datetime'))) / 86400000);
     if (isNaN(days) || days < 0) { return; }
     t.title = t.textContent;
+    /* "이번 주 기록 N개"는 빌드 때 센 값이다. 마지막 기록이 7일 넘게 지났으면 맞지 않으니 지운다. */
+    if (days >= 7 && t.parentNode) { all('[data-week]', t.parentNode).forEach(function (w) { w.parentNode.removeChild(w); }); }
     t.textContent = days === 0 ? '오늘' : (days === 1 ? '어제' : days + '일 전');
   });
 

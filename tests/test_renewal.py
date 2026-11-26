@@ -268,7 +268,7 @@ class MotionTest(SiteTest):
     def test_reveal_hidden_only_under_js_class(self):
         """JS가 꺼져도 글과 카드가 보인다: 완전히 숨기는 규칙(opacity: 0)은 html.js 아래에서만 건다."""
         css = re.sub(r"/\*.*?\*/", "", Path("static/style.css").read_text(encoding="utf-8"), flags=re.S)
-        hidden = [m.group(1).strip() for m in re.finditer(r"([^{}]+)\{[^{}]*opacity:\s*0(?![.\d])[^{}]*\}", css)]
+        hidden = [m.group(1).strip() for m in re.finditer(r"([^{}]+)\{[^{}]*opacity[ ]*:[ ]*0(?![.\d])[^{}]*\}", css)]
         self.assertTrue(hidden, "올라오며 나타나는 규칙이 있어야 한다")
         for selectors in hidden:
             for selector in selectors.split(","):
@@ -340,6 +340,40 @@ class ThumbTest(SiteTest):
         self.assertNotIn('class="thumb"', self.read(out, "index.html"))
         self.assertFalse((out / "thumbs").exists())
 
+
+class ReviewFixTest(SiteTest):
+    """가지 전체 검토(2026-11-26)에서 나온 것."""
+
+    def test_whole_repo_passes_public_lint_patterns(self):
+        # publish.py는 lint가 깨끗해야 게시한다. 테스트 파일도 검사 대상이다.
+        from tools.lint_public import scan_tree
+        self.assertEqual(scan_tree(Path("."), []), [])
+
+    def test_week_count_can_be_dropped_when_stale(self):
+        # 기록 수는 빌드 때 센 값이다. 오래 게시가 없으면 site.js가 이 조각을 지운다.
+        html = live_line([log("2026-11-26"), log("2026-11-21")], date(2026, 11, 26))
+        self.assertIn('<span data-week>이번 주 기록 2개 · </span>마지막 기록 <time data-rel datetime="2026-11-26">', html)
+        js = Path("static/site.js").read_text(encoding="utf-8")
+        self.assertIn("[data-week]", js)
+
+    def test_other_games_rail_counts_separately_from_home_cards(self):
+        rail = other_games_rail(B, [TAMNA, CURVY, GOHYANG], "tamna")
+        self.assertIn('data-goatcounter-click="other-curvy"', rail)
+        self.assertIn('data-goatcounter-click="other-gohyang"', rail)
+        self.assertNotIn('"card-', rail)
+        self.assertIn('data-goatcounter-click="card-curvy"', self.read(self.build(), "index.html"))
+
+    def test_every_tester_button_is_counted(self):
+        out = self.build(full)
+        for rel in ("index.html", "games/tamna/index.html"):
+            page = self.read(out, rel)
+            self.assertEqual(page.count(f'<a class="btn" href="{B}/games/tamna/together/"'), page.count('data-goatcounter-click="tester-tamna"'), rel)
+            self.assertGreaterEqual(page.count('data-goatcounter-click="tester-tamna"'), 2, rel)
+
+    def test_phone_menu_is_hidden_only_when_script_can_open_it(self):
+        css = Path("static/style.css").read_text(encoding="utf-8")
+        self.assertIn(".js .site-nav { display: none;", css)
+        self.assertEqual(css.count(".site-nav { display: none;"), 1)
 
 if __name__ == "__main__":
     unittest.main()

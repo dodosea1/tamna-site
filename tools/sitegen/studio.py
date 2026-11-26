@@ -14,9 +14,10 @@ from tools.sitegen.content import LogEntry, bullet_items, extract_section
 GAME_STATUS = {"개발 중": "dev", "운영 중": "live", "쉬는 중": "rest"}
 
 
-def game_card(base: str, g: dict) -> str:
+def game_card(base: str, g: dict, event: str = "card") -> str:
     """첫 화면·게임 목록·다른 게임 줄의 게임 카드. 바깥 주소(url)가 있으면 그리로, 없으면 게임 페이지로.
 
+    event는 누름 집계 이름의 앞머리다(첫 화면·게임 목록은 card-, '다른 게임' 줄은 other-로 따로 센다).
     card_video가 있으면 그림 자리에 영상을 둔다. 처음에는 포스터 그림만 받고, 영상 파일은 site.js가 화면에 들어올 때 받는다.
     """
     external = g.get("url", "")
@@ -38,7 +39,7 @@ def game_card(base: str, g: dict) -> str:
         tags += f'<span class="tag">{escape(g["platform"])}</span>'
     if external:
         tags += f'<span class="tag">{escape(external.split("//", 1)[-1].rstrip("/"))} ↗</span>'
-    return (f'<a class="game-card" href="{href}"{rel} data-goatcounter-click="card-{escape(g["slug"])}"><div class="pic">{pic}</div>'
+    return (f'<a class="game-card" href="{href}"{rel} data-goatcounter-click="{event}-{escape(g["slug"])}"><div class="pic">{pic}</div>'
             f'<div class="body"><h3>{escape(g["name"])}</h3><p>{escape(g.get("summary", ""))}</p><p class="tags">{tags}</p></div></a>')
 
 
@@ -47,7 +48,7 @@ def other_games_rail(base: str, games: list[dict], current: str) -> str:
     others = [g for g in games if g["slug"] != current]
     if not others:
         return ""
-    cards = "".join(game_card(base, g) for g in others)
+    cards = "".join(game_card(base, g, "other") for g in others)
     return f'<section class="other-games wrap"><p class="eyebrow">ORN의 다른 게임</p><div class="rail">{cards}</div></section>'
 
 
@@ -67,7 +68,8 @@ def live_line(logs: list[LogEntry], today: date) -> str:
     last = escape(max(log.date for log in logs))
     stamp = f'마지막 기록 <time data-rel datetime="{last}">{last}</time>'
     if week:
-        return f'<p class="live">이번 주 기록 {week}개 · {stamp}</p>'
+        # 기록 수는 빌드 때 센 값이라, 마지막 기록이 7일 넘게 지나면 site.js가 data-week 조각을 지운다.
+        return f'<p class="live"><span data-week>이번 주 기록 {week}개 · </span>{stamp}</p>'
     return f'<p class="live">{stamp}</p>'
 
 

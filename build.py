@@ -10,7 +10,7 @@ import json
 import re
 import shutil
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from html import escape
 from pathlib import Path
 
@@ -412,13 +412,14 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
         **common,
         "cards": cards,
         "latest_logs": "".join(_log_link(base, log, game_names, thumb=thumb_for(log)) for log in logs[:6]) or "<li>아직 없습니다</li>",
-        "live": live_line(logs, date.today()),
+        # 기록 날짜는 한국 날짜다. CI는 UTC라서 한국 시간으로 오늘을 잡는다.
+        "live": live_line(logs, datetime.now(timezone(timedelta(hours=9))).date()),
         # 후원은 상자 대신 아래쪽 한 줄만 둔다(설계 5-5). 둘 다 없으면 구역을 두지 않는다.
         "home_follow": f'<section class="wrap home-follow">{home_follow}</section>' if home_follow else "",
         "studio_boxes": "".join(box for slug, box in (
             ("feedback", f'<div class="box"><p class="eyebrow">의견</p><p>어느 게임에 대한 의견인지 골라서 남길 수 있습니다.</p><a class="btn ghost small" href="{base}/feedback/">의견 보내기</a></div>'),
         ) if slug in titles),
-        "hero_cta": (f'<a class="btn" href="{base}/games/tamna/together/">탐라 테스터 신청</a>' if has_tester
+        "hero_cta": (f'<a class="btn" href="{base}/games/tamna/together/" data-goatcounter-click="tester-tamna">탐라 테스터 신청</a>' if has_tester
                      else f'<a class="btn" href="{base}/games/">게임 보기</a>'),
     }
     write_page("", page_html("홈", render_template("index.html", index_ctx, templates), site.get("home_title") or site["title"]))
@@ -461,7 +462,7 @@ def build_site(root: Path, out: Path, base: str | None = None) -> None:
             "hero": _hero_html(base, g),
             "shot": shot,
             "play": _play_html(base, g, root),
-            "hero_cta": (f'<a class="btn" href="{base}/games/{slug}/together/">같이 사냥할 명단 올리기</a>' if has_together
+            "hero_cta": (f'<a class="btn" href="{base}/games/{slug}/together/" data-goatcounter-click="tester-{slug}">같이 사냥할 명단 올리기</a>' if has_together
                          else (f'<a class="btn" href="{base}/log/{slug}/">개발 기록 보기</a>' if g_logs else "")),
         }
         tpl = f"game_{slug}.html" if (templates / f"game_{slug}.html").exists() else "game.html"
