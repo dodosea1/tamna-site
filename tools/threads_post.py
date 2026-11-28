@@ -135,7 +135,30 @@ def _media_problems(media: str, root: Path) -> list[str]:
         return [f"영상이 {size / 1024 / 1024:.1f}MB로 Chrome 업로드 한도 10MB를 넘는다: "
                 f"python tools/threads_media.py --shrink {media} 로 줄이고 publish.py로 올린다"]
     limit = IMAGE_MAX if suffix in IMAGE_SUFFIXES else VIDEO_MAX
-    return ["미디어 용량이 너무 크다"] if size > limit else []
+    if size > limit:
+        return ["미디어 용량이 너무 크다"]
+    dims = media_size(path)
+    if dims and not (MIN_RATIO <= dims[0] / dims[1] <= MAX_RATIO):
+        return [f"미디어 비율 {dims[0]}x{dims[1]}을 스레드가 받지 않는다(가로/세로 {MIN_RATIO:.2f}~{MAX_RATIO:.2f}). "
+                f"옛·새 비교는 옆으로 말고 위아래로 쌓는다"]
+    return []
+
+
+# 스레드가 받은 가장 넓은 매체는 1200x630(1.90), 받지 않은 것은 820x256(3.2)이다(2026-11-26·27).
+MIN_RATIO = 9 / 16
+MAX_RATIO = 1.91
+
+
+def media_size(path: Path) -> tuple[int, int] | None:
+    """가로·세로 픽셀. 알 수 없으면 None(그때는 막지 않는다)."""
+    try:
+        out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries",
+                              "stream=width,height", "-of", "csv=p=0", str(path)],
+                             capture_output=True, text=True, timeout=30).stdout.strip()
+        w, h = (int(x) for x in out.splitlines()[0].split(",")[:2])
+        return (w, h) if w > 0 and h > 0 else None
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError):
+        return None
 
 
 class Store:

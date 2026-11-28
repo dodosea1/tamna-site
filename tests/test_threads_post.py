@@ -139,6 +139,14 @@ class ValidateTest(Base):
         (self.root / "media/a.mp4").write_bytes(b"x")
         self.assertEqual(validate_post(self.post(media="media/a.mp4"), self.root, []), [])
 
+    def test_too_wide_or_too_tall_media_is_blocked(self):
+        from unittest import mock
+        (self.root / "media/a.mp4").write_bytes(b"x")
+        for dims, ok in (((820, 256), False), ((300, 1000), False), ((1200, 630), True), ((820, 1024), True), ((1080, 1920), True)):
+            with mock.patch("tools.threads_post.media_size", return_value=dims):
+                problems = validate_post(self.post(media="media/a.mp4"), self.root, [])
+            self.assertEqual(problems == [], ok, dims)
+
     def test_video_over_chrome_upload_limit_is_blocked_with_fix(self):
         # 2026-11-22: 12.97MB 영상이 Chrome 업로드 한도(10MB)에 걸려 이틀 예약 못 함.
         with open(self.root / "media/big.mp4", "wb") as f:
